@@ -64,21 +64,21 @@ with st.sidebar:
     st.markdown("---")
     
     # ============================================================
-    # CONFIRMED WORKING OLLAMA CLOUD MODELS (AUGUST 2026)
+    # UPDATED OLLAMA CLOUD MODELS - AVAILABLE AUGUST 2026
     # ============================================================
     if provider == "Ollama Cloud":
         model = st.selectbox(
             "Model (Ollama Cloud - Free)",
             [
-                "qwen3-coder:480b",            # ✅ BEST for agents - 480B parameters
-                "gpt-oss:120b",                # ✅ Reliable, general purpose
+                "qwen3.5:397b",                # ✅ NEW - Recommended replacement for qwen3-coder:480b
+                "gpt-oss:120b",                # ✅ General purpose
                 "nemotron-3-super",            # ✅ Great reasoning
                 "deepseek-v4-flash",           # ✅ Fast, 1M context
                 "gemma4:31b",                  # ✅ Google's latest
-                "minimax-m2.7",                # ✅ Top on SWE benchmark
-                "ministral-3:8b",              # ✅ Fast, lightweight
                 "glm-5.2",                     # ✅ Strong reasoning
-                "qwen3.5:397b",                # ✅ Latest Qwen
+                "minimax-m3",                  # ✅ Latest MiniMax
+                "mistral-large-3:675b",        # ✅ Mistral's flagship
+                "kimi-k2.6",                   # ✅ Long-context agentic model
             ],
             index=0
         )
@@ -413,13 +413,13 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                         error_msg = str(e)
                         if "403" in error_msg:
                             st.error("❌ This model requires a subscription. Please select a free model from the dropdown.")
-                            st.info("💡 Try selecting 'qwen3-coder:480b' or 'gpt-oss:120b' - these are free.")
+                            st.info("💡 Try selecting 'qwen3.5:397b' or 'gpt-oss:120b' - these are free.")
                         elif "404" in error_msg or "not found" in error_msg:
                             st.error(f"❌ Model '{model}' not found on Ollama Cloud.")
-                            st.info("💡 Try selecting 'qwen3-coder:480b' or 'gpt-oss:120b' from the dropdown.")
+                            st.info("💡 Try selecting 'qwen3.5:397b' or 'gpt-oss:120b' from the dropdown.")
                         elif "410" in error_msg or "retired" in error_msg:
                             st.error(f"❌ Model '{model}' has been retired. Please select a different model.")
-                            st.info("💡 Try selecting 'qwen3-coder:480b' or 'gpt-oss:120b' from the dropdown.")
+                            st.info("💡 Try selecting 'qwen3.5:397b' or 'gpt-oss:120b' from the dropdown.")
                         else:
                             st.error(f"❌ Ollama Cloud Error: {error_msg}")
                         st.stop()
@@ -554,6 +554,6 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                 import traceback
                 st.code(traceback.format_exc())
                 if provider == "Ollama Cloud":
-                    st.info("💡 Make sure your OLLAMA_API_KEY is correct. Try selecting 'qwen3-coder:480b' as the model.")
+                    st.info("💡 Make sure your OLLAMA_API_KEY is correct. Try selecting 'qwen3.5:397b' as the model.")
                 else:
                     st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
