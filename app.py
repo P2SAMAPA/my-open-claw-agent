@@ -57,20 +57,20 @@ with st.sidebar:
     provider = st.selectbox(
         "Provider",
         ["Ollama Cloud", "OpenRouter"],
-        index=0,
+        index=1,  # Default to OpenRouter (more reliable free models)
         help="Ollama Cloud uses cloud-hosted models. OpenRouter uses their API."
     )
     
     st.markdown("---")
     
     # ============================================================
-    # UPDATED OLLAMA CLOUD MODELS - AVAILABLE AUGUST 2026
+    # OLLAMA CLOUD MODELS - VERIFIED WORKING
     # ============================================================
     if provider == "Ollama Cloud":
         model = st.selectbox(
             "Model (Ollama Cloud - Free)",
             [
-                "qwen3.5:397b",                # ✅ NEW - Recommended replacement for qwen3-coder:480b
+                "qwen3.5:397b",                # ✅ Recommended replacement for qwen3-coder:480b
                 "gpt-oss:120b",                # ✅ General purpose
                 "nemotron-3-super",            # ✅ Great reasoning
                 "deepseek-v4-flash",           # ✅ Fast, 1M context
@@ -90,17 +90,26 @@ with st.sidebar:
         else:
             st.success("✅ Ollama API key found!")
     
+    # ============================================================
+    # EXPANDED OPENROUTER FREE MODELS - AUGUST 2026
+    # ============================================================
     else:  # OpenRouter
         model = st.selectbox(
-            "Model (OpenRouter)",
+            "Model (OpenRouter - Free)",
             [
                 "openrouter/free",                           # ✅ Auto-selects best free model
-                "nvidia/nemotron-3-super-120b-a12b:free",   # ✅ 1M context
-                "openai/gpt-oss-20b:free",                  # ✅ OpenAI OSS
-                "openai/gpt-oss-120b:free",                 # ✅ Larger OSS
+                "nvidia/nemotron-3-super-120b-a12b:free",   # ✅ 1M context, great reasoning
+                "nvidia/nemotron-3-ultra-550b-a55b:free",   # ✅ Top NVIDIA model
                 "nvidia/nemotron-3-nano-30b-a3b:free",      # ✅ MoE architecture
+                "meta-llama/llama-3.3-70b-instruct:free",   # ✅ Powerful Llama model
+                "openai/gpt-oss-120b:free",                 # ✅ Larger OpenAI OSS
+                "openai/gpt-oss-20b:free",                  # ✅ OpenAI OSS
+                "google/gemma-4-31b-it:free",               # ✅ Google's latest
+                "deepseek/deepseek-v4-flash:free",          # ✅ Fast, 1M context
                 "qwen/qwen3-coder:free",                    # ✅ Qwen coding
-                "qwen/qwen3-4b:free",                       # ✅ Qwen lightweight
+                "qwen/qwen3-next-80b-a3b-instruct:free",    # ✅ Qwen next-gen
+                "mistralai/mistral-small-3.1-24b-instruct:free", # ✅ Efficient Mistral
+                "cognitivecomputations/dolphin-mistral-24b-venice-edition:free", # ✅ "Uncensored" model
             ],
             index=0
         )
