@@ -49,7 +49,7 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     
     # ============================================================
-    # CORRECTED MODEL LIST - ONLY CONFIRMED WORKING FREE MODELS
+    # VERIFIED WORKING FREE MODELS ONLY
     # ============================================================
     model = st.selectbox(
         "Model (GOD MODE)",
@@ -58,10 +58,10 @@ with st.sidebar:
             "nvidia/nemotron-3-ultra-550b-a55b:free",      # ✅ NVIDIA Nemotron Ultra
             "nvidia/nemotron-3-super-530b-a37b:free",      # ✅ NVIDIA Nemotron Super
             "mistralai/mistral-7b-instruct:free",          # ✅ Mistral 7B
-            "google/gemini-2.0-flash-lite-preview-02-05:free", # ✅ Gemini Flash Lite
             "deepseek/deepseek-chat:free",                 # ✅ DeepSeek Chat
             "qwen/qwen-2.5-72b-instruct:free",             # ✅ Qwen 2.5
             "microsoft/phi-3-mini-128k-instruct:free",     # ✅ Phi-3 Mini
+            "google/gemini-flash-1.5:free",                # ✅ Gemini Flash (corrected)
         ],
         index=0  # Default to openrouter/free (ALWAYS works)
     )
