@@ -49,23 +49,21 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     
     # ============================================================
-    # GUARANTEED WORKING MODELS - AUGUST 2026
+    # FINAL - ONLY GUARANTEED WORKING MODELS
     # ============================================================
     model = st.selectbox(
         "Model (GOD MODE)",
         [
-            # 🏆 UNRESTRICTED
-            "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",  # ✅ 2.2% refusal rate
-            "nvidia/nemotron-3-super-120b-a12b:free",                       # ✅ 1M context
-            
-            # 🔥 GUARANTEED WORKING
-            "openrouter/free",                                               # ✅ Auto-selects best available
-            "openai/gpt-oss-20b:free",                                      # ✅ OpenAI OSS
-            "openai/gpt-oss-120b:free",                                     # ✅ OpenAI OSS
+            "openrouter/free",                                               # ✅ BEST - Auto-selects working free model
+            "nvidia/nemotron-3-super-120b-a12b:free",                       # ✅ 1M context, strong reasoning
+            "openai/gpt-oss-20b:free",                                      # ✅ OpenAI OSS model
+            "openai/gpt-oss-120b:free",                                     # ✅ Larger OSS model
             "nvidia/nemotron-3-nano-30b-a3b:free",                          # ✅ MoE architecture
             "nvidia/nemotron-nano-9b-v2:free",                              # ✅ Unified reasoning
+            "qwen/qwen3-coder:free",                                        # ✅ Qwen coding
+            "qwen/qwen3-4b:free",                                           # ✅ Qwen lightweight
         ],
-        index=0  # Venice Uncensored
+        index=0  # openrouter/free is the safest default
     )
     
     st.markdown("---")
@@ -73,7 +71,6 @@ with st.sidebar:
     # Security banner
     st.success("🔥 **GOD MODE ACTIVE**")
     st.info("🔒 **Your laptop is SAFE** - Cloud agent cannot access your local system.")
-    st.info("🚫 **NO CENSORSHIP** - Venice Uncensored has only 2.2% refusal rate")
     
     st.markdown("---")
     
