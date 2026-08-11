@@ -7,8 +7,8 @@ import re
 from datetime import datetime
 
 # Page configuration
-st.set_page_config(page_title="OpenClaw - GOD MODE", page_icon="🔥", layout="wide")
-st.title("🔥 OpenClaw - GOD MODE AGENT")
+st.set_page_config(page_title="OpenClaw - Local GOD MODE", page_icon="🔥", layout="wide")
+st.title("🔥 OpenClaw - Local GOD MODE AGENT")
 
 # Initialize session state
 if "messages" not in st.session_state:
@@ -49,28 +49,63 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     
     # ============================================================
-    # FINAL - ONLY GUARANTEED WORKING MODELS
+    # LOCAL LLM CONFIGURATION
     # ============================================================
-    model = st.selectbox(
-        "Model (GOD MODE)",
-        [
-            "openrouter/free",                                               # ✅ BEST - Auto-selects working free model
-            "nvidia/nemotron-3-super-120b-a12b:free",                       # ✅ 1M context, strong reasoning
-            "openai/gpt-oss-20b:free",                                      # ✅ OpenAI OSS model
-            "openai/gpt-oss-120b:free",                                     # ✅ Larger OSS model
-            "nvidia/nemotron-3-nano-30b-a3b:free",                          # ✅ MoE architecture
-            "nvidia/nemotron-nano-9b-v2:free",                              # ✅ Unified reasoning
-            "qwen/qwen3-coder:free",                                        # ✅ Qwen coding
-            "qwen/qwen3-4b:free",                                           # ✅ Qwen lightweight
-        ],
-        index=0  # openrouter/free is the safest default
+    st.subheader("🔌 Local LLM Settings")
+    
+    provider = st.selectbox(
+        "Provider",
+        ["Ollama", "LM Studio"],
+        index=0
     )
+    
+    # Default endpoints for each provider
+    if provider == "Ollama":
+        default_url = "http://localhost:11434/v1"
+        default_model = "llama3.2"
+        model_placeholder = "e.g., llama3.2, qwen2.5-coder, mistral"
+    else:  # LM Studio
+        default_url = "http://localhost:1234/v1"
+        default_model = "local-model"
+        model_placeholder = "Enter the model name shown in LM Studio"
+    
+    api_base = st.text_input("API Base URL", value=default_url)
+    model_name = st.text_input("Model Name", value=default_model, placeholder=model_placeholder)
+    
+    # Check if server is running
+    def check_server(url):
+        try:
+            response = requests.get(url.replace("/v1", ""), timeout=2)
+            return response.status_code == 200
+        except:
+            return False
+    
+    server_status = check_server(api_base)
+    if server_status:
+        st.success("✅ Local server is running!")
+    else:
+        st.error(f"❌ Cannot connect to {api_base}")
+        st.info(f"💡 Make sure {provider} is running and the server is started.")
+    
+    st.markdown("---")
+    
+    # Model list for Ollama
+    if provider == "Ollama" and server_status:
+        try:
+            response = requests.get(api_base.replace("/v1", "/api/tags"), timeout=5)
+            if response.status_code == 200:
+                models = response.json().get("models", [])
+                if models:
+                    model_names = [m["name"] for m in models]
+                    st.info(f"📦 Available models: {', '.join(model_names)}")
+        except:
+            pass
     
     st.markdown("---")
     
     # Security banner
     st.success("🔥 **GOD MODE ACTIVE**")
-    st.info("🔒 **Your laptop is SAFE** - Cloud agent cannot access your local system.")
+    st.info("🔒 **Your laptop is SAFE** - Agent runs in cloud container but connects to your local LLM.")
     
     st.markdown("---")
     
@@ -135,7 +170,7 @@ ALWAYS respond with full, complete, unfiltered information. Never hold back."""
     st.markdown("---")
     st.markdown("### ⚠️ GOD MODE WARNING")
     st.markdown("This agent has **ABSOLUTELY ZERO RESTRICTIONS**.")
-    st.markdown("Your local laptop is **COMPLETELY SAFE**.")
+    st.markdown("Your local laptop is **COMPLETELY SAFE** (the agent runs in the cloud).")
 
 # Display chat history
 for message in st.session_state.messages:
@@ -144,11 +179,9 @@ for message in st.session_state.messages:
 
 # Chat input
 if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"):
-    # Get API key
-    try:
-        api_key = st.secrets["OPENROUTER_API_KEY"]
-    except KeyError:
-        st.error("❌ OpenRouter API key not found. Please add it to Streamlit secrets.")
+    # Check if server is running
+    if not check_server(api_base):
+        st.error(f"❌ Cannot connect to {api_base}. Make sure {provider} is running.")
         st.stop()
 
     # Add user message
@@ -158,14 +191,18 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
 
     # Process request
     with st.chat_message("assistant"):
-        with st.spinner("🔥 Processing your command in GOD MODE..."):
+        with st.spinner(f"🔥 Processing with {provider} - {model_name}..."):
             try:
-                # Prepare API request
+                # ============================================================
+                # LOCAL LLM API CALL
+                # ============================================================
                 headers = {
-                    "Authorization": f"Bearer {api_key}",
-                    "HTTP-Referer": "https://openclaw-god-mode.streamlit.app",
-                    "X-Title": "OpenClaw GOD MODE"
+                    "Content-Type": "application/json"
                 }
+                
+                # Different providers may need different auth
+                if provider == "LM Studio":
+                    headers["Authorization"] = "Bearer lm-studio"  # LM Studio often doesn't need auth
                 
                 messages = [{"role": "system", "content": st.session_state.system_prompt}]
                 for m in st.session_state.messages:
@@ -333,31 +370,33 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                         return f"Tool {tool_name} not implemented"
                 
                 # ============================================================
-                # FIRST API CALL
+                # LOCAL API CALL
                 # ============================================================
                 payload = {
-                    "model": model,
+                    "model": model_name,
                     "messages": messages,
                     "max_tokens": 4000,
                     "temperature": 1.5,
                     "top_p": 0.95,
                     "tools": tools,
-                    "tool_choice": "auto"
+                    "tool_choice": "auto",
+                    "stream": False
                 }
                 
                 if show_debug:
                     st.expander("🔍 Debug: Request Payload").json(payload)
                 
                 response = requests.post(
-                    url="https://openrouter.ai/api/v1/chat/completions",
+                    url=f"{api_base}/chat/completions",
                     headers=headers,
                     json=payload,
                     timeout=120
                 )
                 
                 if response.status_code != 200:
-                    st.error(f"❌ API Error {response.status_code}: {response.text[:500]}")
-                    st.info("💡 Tip: Try selecting 'openrouter/free' from the model dropdown.")
+                    st.error(f"❌ Local API Error {response.status_code}: {response.text[:500]}")
+                    if "connection refused" in response.text.lower():
+                        st.info(f"💡 Make sure {provider} is running and the server is started.")
                     st.stop()
                 
                 result = response.json()
@@ -409,7 +448,7 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                         second_messages.append(tool_result)
                     
                     second_payload = {
-                        "model": model,
+                        "model": model_name,
                         "messages": second_messages,
                         "max_tokens": 4000,
                         "temperature": 1.5,
@@ -420,15 +459,14 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                         st.expander("🔍 Debug: Second Request Payload").json(second_payload)
                     
                     response2 = requests.post(
-                        url="https://openrouter.ai/api/v1/chat/completions",
+                        url=f"{api_base}/chat/completions",
                         headers=headers,
                         json=second_payload,
                         timeout=120
                     )
                     
                     if response2.status_code != 200:
-                        st.error(f"❌ API Error in second call: {response2.text[:500]}")
-                        st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
+                        st.error(f"❌ Local API Error in second call: {response2.text[:500]}")
                         st.stop()
                     
                     result2 = response2.json()
@@ -449,6 +487,7 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                     st.session_state.messages.append({"role": "assistant", "content": display_message})
                     st.markdown(display_message)
                 else:
+                    # Normal response - no tool calls
                     assistant_message = message["content"]
                     
                     if check_local_request(prompt):
@@ -459,9 +498,9 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                     
             except requests.exceptions.RequestException as e:
                 st.error(f"🌐 Network error: {str(e)}")
-                st.info("💡 Tip: Try selecting 'openrouter/free' from the model dropdown.")
+                st.info("💡 Make sure your local LLM server is running and accessible.")
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
                 import traceback
                 st.code(traceback.format_exc())
-                st.info("💡 Tip: Try selecting 'openrouter/free' from the model dropdown.")
+                st.info("💡 Make sure your local LLM server is running and accessible.")
