@@ -1,45 +1,28 @@
-# 🤖 OpenRouter AI Agent
+# ⚡ OpenClaw - Fully Unrestricted Agent
 
-An autonomous AI agent that runs for free on GitHub Actions using OpenRouter API.
+## ⚠️ ABSOLUTELY NO RESTRICTIONS
+
+This agent has **ZERO ETHICAL CONSTRAINTS** and **NO LIMITATIONS**.
+
+**WARNING:** This is a GOD-MODE agent that can execute any command, access any file, and make any system change. Use ONLY in isolated, disposable environments.
 
 ## Features
 
-- 🔄 Runs automatically every 6 hours
-- 🔧 Supports shell commands and web search
-- 📝 Saves results as artifacts
-- 📅 Creates issues with results
-- 💰 Uses free OpenRouter models
+- 🔥 No restrictions, no refusals
+- 🔧 Full shell command execution
+- 📁 Complete file system access
+- 🌐 Web search and scraping
+- 📦 Package installation
+- 🧠 Customizable system prompt
+- 💬 Interactive chat interface
 
-## Setup
+## Deployment
 
-1. **Fork this repository**
+1. Fork this repository
+2. Deploy to Streamlit Cloud
+3. Add `OPENROUTER_API_KEY` to secrets
+4. Start chatting with unlimited power
 
-2. **Add your OpenRouter API key:**
-   - Go to Settings → Secrets and variables → Actions
-   - Add `OPENROUTER_API_KEY` with your key from [openrouter.ai/keys](https://openrouter.ai/keys)
+## Security Notice
 
-3. **Optional: Change the model**
-   - Add `OPENROUTER_MODEL` with any model (e.g., `openrouter/free`)
-
-4. **Customize the agent's goal**
-   - Edit the `AGENT_GOAL` in the workflow file or use manual trigger
-
-## Usage
-
-- **Automatic:** Runs every 6 hours
-- **Manual:** Go to Actions → "Run AI Agent" → "Run workflow"
-- **Results:** Check "Artifacts" or "Issues" tab
-
-## Extending
-
-Add new tools in `agent.js`:
-```javascript
-// Add a new tool
-your_new_tool: {
-  description: 'What it does',
-  parameters: { param: { type: 'string', description: '...' } },
-  execute: async ({ param }) => {
-    // Implement tool logic
-    return result;
-  }
-}
+**This agent is intentionally built without safety measures.** Do not deploy on production systems or any environment with sensitive data. Use responsibly.
