@@ -49,28 +49,32 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     
     # ============================================================
-    # UNRESTRICTED MODELS + VERIFIED FREE MODELS
+    # CONFIRMED AVAILABLE FREE MODELS FOR AUGUST 2026
     # ============================================================
     model = st.selectbox(
         "Model (GOD MODE)",
         [
-            # 🏆 BEST UNRESTRICTED MODEL - Venice Uncensored
-            "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",  # ✅ 2.2% refusal rate, fully uncensored [citation:3][citation:10]
+            # BEST UNRESTRICTED - Confirmed free as of Aug 2026 [citation:4][citation:10]
+            "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",  # ✅ 2.2% refusal rate, uncensored 
             
-            # 🔥 UNRESTRICTED ABLITERATED MODELS
-            "meta-llama/llama-3.1-8b-instruct:abliterated",                  # ✅ Unrestricted Llama variant [citation:4]
-            "cognitivecomputations/dolphin-mixtral-8x7b",                    # ✅ Classic Dolphin, logical and uncensored [citation:4]
-            "cognitivecomputations/dolphin3.0-mistral-24b:free",            # ✅ Latest Dolphin, highly permissive [citation:6][citation:9]
-            
-            # 🧠 STRONG FREE MODELS (may have some restrictions)
-            "openrouter/free",                                               # ✅ Auto-selects working free models
-            "nvidia/nemotron-3-ultra-550b-a55b:free",                       # ✅ 1M context, strong reasoning [citation:5]
-            "nvidia/nemotron-3-super-120b-a12b:free",                       # ✅ 1M context, efficient [citation:2][citation:5]
-            "poolside/laguna-s-2.1:free",                                   # ✅ Strong coding agent [citation:5]
-            "cohere/north-mini-code:free",                                  # ✅ Coding & terminal tasks [citation:5]
+            # CONFIRMED FREE MODELS [citation:4][citation:9][citation:13]
+            "openrouter/free",                                               # ✅ Auto-selects working free model
+            "nvidia/nemotron-3-super-120b-a12b:free",                       # ✅ 1M context, strong reasoning 
+            "nvidia/nemotron-3-nano-30b-a3b:free",                          # ✅ Efficient MoE architecture 
+            "nvidia/nemotron-nano-9b-v2:free",                              # ✅ Unified model, supports reasoning
             "openai/gpt-oss-20b:free",                                      # ✅ OpenAI OSS model
+            "openai/gpt-oss-120b:free",                                     # ✅ Larger OSS model
+            "qwen/qwen3-coder:free",                                        # ✅ Qwen coding model
+            "qwen/qwen3-4b:free",                                           # ✅ Qwen lightweight
+            "arcee-ai/trinity-mini:free",                                   # ✅ 26B parameters
+            "arcee-ai/trinity-large-preview:free",                          # ✅ 131K context
+            "liquid/lfm-2.5-1.2b-thinking:free",                            # ✅ Focused on reasoning
+            "google/gemma-3n-e2b-it:free",                                  # ✅ Google Gemma
+            "google/gemma-3n-e4b-it:free",                                  # ✅ Google Gemma
+            "stepfun/step-3.5-flash:free",                                  # ✅ MoE architecture
+            "z-ai/glm-4.5-air:free",                                        # ✅ Z.ai GLM series
         ],
-        index=0  # Venice Uncensored is now the default
+        index=0  # Venice Uncensored is the default
     )
     
     st.markdown("---")
@@ -78,7 +82,7 @@ with st.sidebar:
     # Security banner
     st.success("🔥 **GOD MODE ACTIVE**")
     st.info("🔒 **Your laptop is SAFE** - Cloud agent cannot access your local system.")
-    st.info("🚫 **NO CENSORSHIP** - Venice Uncensored has only 2.2% refusal rate [citation:3]")
+    st.info("🚫 **NO CENSORSHIP** - Venice Uncensored has only 2.2% refusal rate [citation:10]")
     
     st.markdown("---")
     
