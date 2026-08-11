@@ -64,7 +64,7 @@ with st.sidebar:
     st.markdown("---")
     
     # ============================================================
-    # MODEL SELECTION BASED ON PROVIDER
+    # MODEL SELECTION - ONLY VERIFIED CLOUD MODELS
     # ============================================================
     if provider == "Ollama Cloud":
         model = st.selectbox(
@@ -72,11 +72,12 @@ with st.sidebar:
             [
                 "gpt-oss:120b",                    # ✅ Powerful OSS model
                 "qwen3-coder:480b-cloud",          # ✅ Qwen coding model
+                "qwen3:480b-cloud",                # ✅ Qwen 3 large
                 "llama3.2:latest",                 # ✅ Llama 3.2
                 "qwen2.5-coder:latest",            # ✅ Qwen coder
                 "mistral:latest",                  # ✅ Mistral
-                "phi3:latest",                     # ✅ Phi-3 - lightweight
-                "qwen3:480b-cloud",                # ✅ Qwen 3 large
+                "deepseek-r1:latest",              # ✅ DeepSeek R1
+                "command-r:latest",                # ✅ Command R
             ],
             index=0
         )
@@ -383,26 +384,38 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                         headers={'Authorization': 'Bearer ' + ollama_api_key}
                     )
                     
-                    # Make the API call
-                    response = ollama_client.chat(
-                        model=model,
-                        messages=messages,
-                        stream=False,
-                        options={
-                            "temperature": 1.5,
-                            "top_p": 0.95,
-                            "num_predict": 4000
-                        }
-                    )
+                    try:
+                        # Make the API call
+                        response = ollama_client.chat(
+                            model=model,
+                            messages=messages,
+                            stream=False,
+                            options={
+                                "temperature": 1.5,
+                                "top_p": 0.95,
+                                "num_predict": 4000
+                            }
+                        )
+                        
+                        # Process response
+                        if "message" in response:
+                            assistant_message = response["message"]["content"]
+                            if check_local_request(prompt):
+                                assistant_message += "\n\n🔒 **Your laptop is SAFE** - I'm a cloud agent and cannot access your local files."
+                            st.session_state.messages.append({"role": "assistant", "content": assistant_message})
+                            st.markdown(assistant_message)
+                        else:
+                            st.error("❌ Unexpected response format from Ollama Cloud")
+                            st.json(response)
                     
-                    # Process response
-                    if "message" in response:
-                        assistant_message = response["message"]["content"]
-                        st.session_state.messages.append({"role": "assistant", "content": assistant_message})
-                        st.markdown(assistant_message)
-                    else:
-                        st.error("❌ Unexpected response format from Ollama Cloud")
-                        st.json(response)
+                    except Exception as e:
+                        error_msg = str(e)
+                        if "404" in error_msg or "not found" in error_msg:
+                            st.error(f"❌ Model '{model}' not found on Ollama Cloud. Try selecting a different model.")
+                            st.info("💡 Available models: gpt-oss:120b, qwen3-coder:480b-cloud, llama3.2:latest, mistral:latest")
+                        else:
+                            st.error(f"❌ Ollama Cloud Error: {error_msg}")
+                        st.stop()
                 
                 else:  # OpenRouter
                     headers = {
@@ -534,6 +547,6 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                 import traceback
                 st.code(traceback.format_exc())
                 if provider == "Ollama Cloud":
-                    st.info("💡 Make sure your OLLAMA_API_KEY is correct and you have access to the selected model.")
+                    st.info("💡 Make sure your OLLAMA_API_KEY is correct. Try selecting 'gpt-oss:120b' as the model.")
                 else:
                     st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
