@@ -49,19 +49,21 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     
     # ============================================================
-    # VERIFIED WORKING FREE MODELS ONLY
+    # CORRECTED MODEL LIST - ONLY VERIFIED WORKING FREE MODELS
     # ============================================================
     model = st.selectbox(
         "Model (GOD MODE)",
         [
             "openrouter/free",                              # ✅ BEST - Auto-selects working free model
-            "nvidia/nemotron-3-ultra-550b-a55b:free",      # ✅ NVIDIA Nemotron Ultra
-            "nvidia/nemotron-3-super-530b-a37b:free",      # ✅ NVIDIA Nemotron Super
-            "mistralai/mistral-7b-instruct:free",          # ✅ Mistral 7B
+            "nvidia/nemotron-3-ultra-550b-a55b:free",      # ✅ NVIDIA Nemotron Ultra - 1M context
+            "nvidia/nemotron-3-super-120b-a12b:free",      # ✅ NVIDIA Nemotron Super - 1M context
+            "nvidia/nemotron-3-nano-30b-a3b:free",         # ✅ NVIDIA Nemotron Nano
+            "poolside/laguna-s-2.1:free",                  # ✅ Poolside - Strong coding agent
+            "cohere/north-mini-code:free",                 # ✅ Cohere - Coding & terminal tasks
+            "openai/gpt-oss-20b:free",                     # ✅ OpenAI OSS model
             "deepseek/deepseek-chat:free",                 # ✅ DeepSeek Chat
+            "mistralai/mistral-7b-instruct:free",          # ✅ Mistral 7B
             "qwen/qwen-2.5-72b-instruct:free",             # ✅ Qwen 2.5
-            "microsoft/phi-3-mini-128k-instruct:free",     # ✅ Phi-3 Mini
-            "google/gemini-flash-1.5:free",                # ✅ Gemini Flash (corrected)
         ],
         index=0  # Default to openrouter/free (ALWAYS works)
     )
@@ -359,7 +361,7 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                 
                 if response.status_code != 200:
                     st.error(f"❌ API Error {response.status_code}: {response.text[:500]}")
-                    st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
+                    st.info("💡 Tip: Try selecting 'openrouter/free' from the model dropdown.")
                     st.stop()
                 
                 result = response.json()
