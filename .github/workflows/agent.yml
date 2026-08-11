@@ -1,0 +1,87 @@
+name: Run AI Agent
+
+on:
+  # Run on a schedule (every 6 hours)
+  schedule:
+    - cron: '0 */6 * * *'
+  
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      goal:
+        description: 'What should the agent do?'
+        required: false
+        default: 'Research the latest developments in AI and provide a 3-point summary.'
+  
+  # Run when code is pushed
+  push:
+    branches: [ main ]
+
+jobs:
+  agent-run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Allow the agent to push changes if needed
+      issues: write    # Allow creating issues
+      pull-requests: write  # Allow PR comments
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Agent
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL || 'openrouter/free' }}
+          AGENT_GOAL: ${{ github.event.inputs.goal || 'Research the latest developments in AI and provide a 3-point summary.' }}
+        run: |
+          echo "🤖 Starting agent..."
+          node agent.js | tee output.txt
+          echo "📊 Agent output:" > result.md
+          echo '```' >> result.md
+          cat output.txt >> result.md
+          echo '```' >> result.md
+
+      - name: Save results
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-results
+          path: result.md
+          retention-days: 7
+
+      - name: Comment on PR (if triggered from PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const result = fs.readFileSync('result.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: result
+            });
+
+      - name: Create Issue with results (if scheduled)
+        if: github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const result = fs.readFileSync('result.md', 'utf8');
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🤖 Agent Report - ${new Date().toISOString().split('T')[0]}`,
+              body: result
+            });
