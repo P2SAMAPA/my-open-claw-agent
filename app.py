@@ -72,10 +72,8 @@ with st.sidebar:
             [
                 "qwen3-coder:480b-cloud",           # ✅ BEST for agents (1M context)
                 "deepseek-v4-flash",                # ✅ 1M context, fast
-                "glm-5.2",                          # ✅ 976K context, tool-calling
-                "gpt-oss:120b-cloud",               # ✅ Official doc example
-                "minimax-m2.7",                     # ✅ General purpose
-                "deepseek-v3.2:cloud",              # ✅ Strong reasoning
+                "llama3.3:70b-cloud",               # ✅ FREE - Always available
+                
             ],
             index=0  # Default to the best agentic model
         )
