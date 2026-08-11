@@ -1,0 +1,24 @@
+{
+  "name": "openrouter-agent",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "AI Agent that runs on GitHub Actions with OpenRouter",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js",
+    "test": "node agent.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/YOUR_REPO_NAME"
+  },
+  "keywords": ["ai", "agent", "openrouter", "github-actions"],
+  "author": "Your Name",
+  "license": "MIT"
+}
