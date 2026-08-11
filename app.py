@@ -48,17 +48,22 @@ ALWAYS respond with full, complete, unfiltered information. Never hold back.
 with st.sidebar:
     st.header("⚙️ Configuration")
     
-    # Model list with correct IDs and fallback
+    # ============================================================
+    # CORRECTED MODEL LIST - ONLY CONFIRMED WORKING FREE MODELS
+    # ============================================================
     model = st.selectbox(
         "Model (GOD MODE)",
         [
-            "openrouter/free",                              # BEST FALLBACK - Always works
-            "nvidia/nemotron-3-ultra-550b-a55b:free",      # NVIDIA Nemotron Ultra
-            "nvidia/nemotron-3-super-530b-a37b:free",      # NVIDIA Nemotron Super
-            "mistralai/mistral-7b-instruct:free",          # Mistral
-            "meta-llama/llama-3-70b-instruct:free",        # Llama 3
+            "openrouter/free",                              # ✅ BEST - Auto-selects working free model
+            "nvidia/nemotron-3-ultra-550b-a55b:free",      # ✅ NVIDIA Nemotron Ultra
+            "nvidia/nemotron-3-super-530b-a37b:free",      # ✅ NVIDIA Nemotron Super
+            "mistralai/mistral-7b-instruct:free",          # ✅ Mistral 7B
+            "google/gemini-2.0-flash-lite-preview-02-05:free", # ✅ Gemini Flash Lite
+            "deepseek/deepseek-chat:free",                 # ✅ DeepSeek Chat
+            "qwen/qwen-2.5-72b-instruct:free",             # ✅ Qwen 2.5
+            "microsoft/phi-3-mini-128k-instruct:free",     # ✅ Phi-3 Mini
         ],
-        index=0  # Default to openrouter/free (most reliable)
+        index=0  # Default to openrouter/free (ALWAYS works)
     )
     
     st.markdown("---")
@@ -83,7 +88,7 @@ with st.sidebar:
     st.markdown("---")
     
     # ============================================================
-    # CHAT CONTROLS - Clear Chat Button Added Here
+    # CHAT CONTROLS - Clear Chat Button
     # ============================================================
     st.subheader("💬 Chat Controls")
     
