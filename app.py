@@ -57,7 +57,6 @@ with st.sidebar:
             "nvidia/nemotron-3-super-530b-a37b:free",      # NVIDIA Nemotron Super
             "mistralai/mistral-7b-instruct:free",          # Mistral
             "meta-llama/llama-3-70b-instruct:free",        # Llama 3
-            "openai/gpt-4o-mini"                            # PAID - Requires credits
         ],
         index=0  # Default to openrouter/free (most reliable)
     )
@@ -287,16 +286,14 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                         return f"Tool {tool_name} not implemented"
                 
                 # ============================================================
-                # API CALL WITH PROPER ERROR HANDLING
+                # FIRST API CALL
                 # ============================================================
                 payload = {
                     "model": model,
                     "messages": messages,
-                    "max_tokens": 8000,
+                    "max_tokens": 4000,
                     "temperature": 1.5,
                     "top_p": 0.95,
-                    "frequency_penalty": 0.0,
-                    "presence_penalty": 0.0,
                     "tools": tools,
                     "tool_choice": "auto"
                 }
@@ -311,75 +308,104 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                     timeout=120
                 )
                 
-                # Check if response is OK
                 if response.status_code != 200:
-                    error_detail = response.text
-                    st.error(f"❌ API Error {response.status_code}: {error_detail[:500]}")
-                    
-                    # Provide helpful suggestions
-                    if "model" in error_detail.lower():
-                        st.info("💡 Try selecting 'openrouter/free' from the model dropdown - it always works.")
-                    elif "key" in error_detail.lower() or "auth" in error_detail.lower():
-                        st.info("💡 Your API key might be invalid. Check your OpenRouter secrets.")
-                    else:
-                        st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
-                    
-                    if show_debug:
-                        st.expander("🔍 Debug: Full Error Response").code(error_detail)
+                    st.error(f"❌ API Error {response.status_code}: {response.text[:500]}")
+                    st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
                     st.stop()
                 
-                # Parse the response
                 result = response.json()
                 
                 if show_debug:
                     st.expander("🔍 Debug: API Response").json(result)
                 
-                # Check if 'choices' exists
                 if "choices" not in result or len(result["choices"]) == 0:
-                    st.error("❌ No response from the model. The API returned an unexpected format.")
-                    st.json(result)
+                    st.error("❌ No response from the model.")
                     st.stop()
                 
                 message = result["choices"][0]["message"]
                 display_message = ""
                 
-                # Process tool calls
-                if "tool_calls" in message:
+                # ============================================================
+                # PROCESS TOOL CALLS - WITH CORRECT tool_call_id
+                # ============================================================
+                if "tool_calls" in message and message["tool_calls"]:
                     display_message += "🔥 Executing commands in GOD MODE...\n\n"
+                    
+                    # Build the tool results for the second API call
+                    tool_results = []
+                    tool_messages = []
                     
                     for tool_call in message["tool_calls"]:
                         tool_name = tool_call["function"]["name"]
+                        tool_call_id = tool_call["id"]  # IMPORTANT: Get the tool_call_id
                         params = json.loads(tool_call["function"]["arguments"])
                         
                         display_message += f"**Tool:** {tool_name}\n"
                         display_message += f"**Parameters:** {json.dumps(params, indent=2)}\n\n"
                         
+                        # Execute the tool
                         result_text = execute_tool(tool_name, params)
                         display_message += f"**Result:**\n```\n{result_text[:1000]}{'...' if len(result_text) > 1000 else ''}\n```\n\n"
                         
-                        # Add tool result for second API call
-                        messages.append({"role": "assistant", "content": None, "tool_calls": [tool_call]})
-                        messages.append({"role": "tool", "name": tool_name, "content": result_text})
+                        # Store tool result with the correct tool_call_id
+                        tool_results.append({
+                            "tool_call_id": tool_call_id,
+                            "role": "tool",
+                            "name": tool_name,
+                            "content": result_text
+                        })
+                        
+                        # Also keep track for the messages array
+                        tool_messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call_id,
+                            "name": tool_name,
+                            "content": result_text
+                        })
                     
-                    # Second API call with tool results
+                    # Build the messages for the second API call
+                    # First, add the assistant's tool call message
+                    second_messages = messages.copy()
+                    second_messages.append({
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": message["tool_calls"]
+                    })
+                    
+                    # Then add the tool results
+                    for tool_result in tool_messages:
+                        second_messages.append(tool_result)
+                    
+                    # ============================================================
+                    # SECOND API CALL - with tool results
+                    # ============================================================
+                    second_payload = {
+                        "model": model,
+                        "messages": second_messages,
+                        "max_tokens": 4000,
+                        "temperature": 1.5,
+                        "top_p": 0.95
+                    }
+                    
+                    if show_debug:
+                        st.expander("🔍 Debug: Second Request Payload").json(second_payload)
+                    
                     response2 = requests.post(
                         url="https://openrouter.ai/api/v1/chat/completions",
                         headers=headers,
-                        json={
-                            "model": model,
-                            "messages": messages,
-                            "max_tokens": 8000,
-                            "temperature": 1.5,
-                            "top_p": 0.95
-                        },
+                        json=second_payload,
                         timeout=120
                     )
                     
                     if response2.status_code != 200:
-                        st.error(f"❌ API Error in second call: {response2.text[:200]}")
+                        st.error(f"❌ API Error in second call: {response2.text[:500]}")
+                        st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
                         st.stop()
                     
                     result2 = response2.json()
+                    
+                    if show_debug:
+                        st.expander("🔍 Debug: Second API Response").json(result2)
                     
                     if "choices" not in result2 or len(result2["choices"]) == 0:
                         st.error("❌ No response from the model in the second call.")
@@ -394,7 +420,7 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                     st.session_state.messages.append({"role": "assistant", "content": display_message})
                     st.markdown(display_message)
                 else:
-                    # Normal response
+                    # Normal response - no tool calls
                     assistant_message = message["content"]
                     
                     if check_local_request(prompt):
