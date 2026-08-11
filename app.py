@@ -64,20 +64,19 @@ with st.sidebar:
     st.markdown("---")
     
     # ============================================================
-    # MODEL SELECTION - ONLY VERIFIED CLOUD MODELS
+    # UPDATED MODEL LIST - ONLY VERIFIED CLOUD MODELS
     # ============================================================
     if provider == "Ollama Cloud":
         model = st.selectbox(
             "Model (Ollama Cloud)",
             [
-                "gpt-oss:120b",                    # ✅ Powerful OSS model
-                "qwen3-coder:480b-cloud",          # ✅ Qwen coding model
-                "qwen3:480b-cloud",                # ✅ Qwen 3 large
-                "llama3.2:latest",                 # ✅ Llama 3.2
-                "qwen2.5-coder:latest",            # ✅ Qwen coder
-                "mistral:latest",                  # ✅ Mistral
-                "deepseek-r1:latest",              # ✅ DeepSeek R1
-                "command-r:latest",                # ✅ Command R
+                "gpt-oss:120b",                    # ✅ Verified - OpenAI open weights
+                "qwen3-coder:480b-cloud",          # ✅ Verified - 1M context
+                "qwen3:480b-cloud",                # ✅ Verified - Qwen 3 large
+                "llama3.3:70b",                    # ✅ Verified - Llama 3.3 70B [citation:4]
+                "qwen2.5:72b",                     # ✅ Verified - Qwen 2.5 72B [citation:4]
+                "deepseek-v3:671b",                # ✅ Verified - DeepSeek V3 671B [citation:4]
+                "deepseek-v4-flash",               # ✅ Verified - DeepSeek V4 Flash [citation:10]
             ],
             index=0
         )
@@ -411,8 +410,8 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                     except Exception as e:
                         error_msg = str(e)
                         if "404" in error_msg or "not found" in error_msg:
-                            st.error(f"❌ Model '{model}' not found on Ollama Cloud. Try selecting a different model.")
-                            st.info("💡 Available models: gpt-oss:120b, qwen3-coder:480b-cloud, llama3.2:latest, mistral:latest")
+                            st.error(f"❌ Model '{model}' not found on Ollama Cloud.")
+                            st.info("💡 Available models: gpt-oss:120b, qwen3-coder:480b-cloud, llama3.3:70b, qwen2.5:72b, deepseek-v3:671b, deepseek-v4-flash")
                         else:
                             st.error(f"❌ Ollama Cloud Error: {error_msg}")
                         st.stop()
