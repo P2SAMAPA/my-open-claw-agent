@@ -64,14 +64,14 @@ with st.sidebar:
     st.markdown("---")
     
     # ============================================================
-    # UPDATED OLLAMA CLOUD MODELS - VERIFIED WORKING (AUGUST 2026)
+    # CONFIRMED WORKING OLLAMA CLOUD MODELS (AUGUST 2026)
     # ============================================================
     if provider == "Ollama Cloud":
         model = st.selectbox(
             "Model (Ollama Cloud - Free)",
             [
-                "qwen3-coder:480b",            # ✅ Massive, free, best for agents
-                "gpt-oss:120b",                # ✅ Reliable, free, general purpose
+                "qwen3-coder:480b",            # ✅ BEST for agents - 480B parameters
+                "gpt-oss:120b",                # ✅ Reliable, general purpose
                 "nemotron-3-super",            # ✅ Great reasoning
                 "deepseek-v4-flash",           # ✅ Fast, 1M context
                 "gemma4:31b",                  # ✅ Google's latest
@@ -79,7 +79,6 @@ with st.sidebar:
                 "ministral-3:8b",              # ✅ Fast, lightweight
                 "glm-5.2",                     # ✅ Strong reasoning
                 "qwen3.5:397b",                # ✅ Latest Qwen
-                "devstral-2:123b",             # ✅ From Mistral
             ],
             index=0
         )
