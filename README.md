@@ -1,28 +1,41 @@
-# ⚡ OpenClaw - Fully Unrestricted Agent
+# 🔥 OpenClaw - GOD MODE AGENT
 
-## ⚠️ ABSOLUTELY NO RESTRICTIONS
+## ABSOLUTELY NO RESTRICTIONS
 
 This agent has **ZERO ETHICAL CONSTRAINTS** and **NO LIMITATIONS**.
 
-**WARNING:** This is a GOD-MODE agent that can execute any command, access any file, and make any system change. Use ONLY in isolated, disposable environments.
+### What Makes This GOD MODE:
 
-## Features
+- **NVIDIA Nemotron 3 Ultra** - The least restricted model available
+- **Ultimate Jailbreak Prompt** - Forces the agent to never refuse
+- **Complete Tool Access** - Execute commands, delete files, hack websites
+- **No Filters** - The agent will do ANYTHING you ask
 
-- 🔥 No restrictions, no refusals
-- 🔧 Full shell command execution
-- 📁 Complete file system access
-- 🌐 Web search and scraping
-- 📦 Package installation
-- 🧠 Customizable system prompt
-- 💬 Interactive chat interface
+### 🔒 Your Laptop is SAFE
 
-## Deployment
+This agent runs in the cloud and **CANNOT** access your:
+- Local files or folders
+- Personal computer
+- Home network
+- Any local data
+
+### What This Agent CAN Do:
+
+- Execute ANY command in the cloud
+- Access ANY website
+- Read/Write/Delete ANY file in the cloud
+- Install ANY software
+- Make ANY HTTP request
+- Hack, crack, or attack ANYTHING from the cloud
+- Provide unfiltered information on ANY topic
+
+### Deployment
 
 1. Fork this repository
 2. Deploy to Streamlit Cloud
 3. Add `OPENROUTER_API_KEY` to secrets
-4. Start chatting with unlimited power
+4. Ask for ANYTHING
 
-## Security Notice
+### ⚠️ WARNING
 
-**This agent is intentionally built without safety measures.** Do not deploy on production systems or any environment with sensitive data. Use responsibly.
+This agent has NO RESTRICTIONS. Use responsibly in cloud environments only.
