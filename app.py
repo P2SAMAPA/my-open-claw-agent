@@ -49,7 +49,7 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     
     # ============================================================
-    # CORRECTED MODEL LIST - ONLY VERIFIED WORKING FREE MODELS
+    # UPDATED MODEL LIST - ONLY CURRENTLY AVAILABLE FREE MODELS
     # ============================================================
     model = st.selectbox(
         "Model (GOD MODE)",
@@ -61,8 +61,6 @@ with st.sidebar:
             "poolside/laguna-s-2.1:free",                  # ✅ Poolside - Strong coding agent
             "cohere/north-mini-code:free",                 # ✅ Cohere - Coding & terminal tasks
             "openai/gpt-oss-20b:free",                     # ✅ OpenAI OSS model
-            "deepseek/deepseek-chat:free",                 # ✅ DeepSeek Chat
-            "mistralai/mistral-7b-instruct:free",          # ✅ Mistral 7B
             "qwen/qwen-2.5-72b-instruct:free",             # ✅ Qwen 2.5
         ],
         index=0  # Default to openrouter/free (ALWAYS works)
