@@ -49,27 +49,23 @@ with st.sidebar:
     st.header("⚙️ Configuration")
     
     # ============================================================
-    # ONLY CONFIRMED WORKING MODELS
+    # GUARANTEED WORKING MODELS - AUGUST 2026
     # ============================================================
     model = st.selectbox(
         "Model (GOD MODE)",
         [
-            # 🏆 BEST UNRESTRICTED - Confirmed working
-            "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",  # ✅ 2.2% refusal rate 
+            # 🏆 UNRESTRICTED
+            "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",  # ✅ 2.2% refusal rate
+            "nvidia/nemotron-3-super-120b-a12b:free",                       # ✅ 1M context
             
-            # 🧠 CONFIRMED WORKING FREE MODELS
+            # 🔥 GUARANTEED WORKING
             "openrouter/free",                                               # ✅ Auto-selects best available
-            "nvidia/nemotron-3-super-120b-a12b:free",                       # ✅ 1M context, strong reasoning 
-            "nvidia/nemotron-3-nano-30b-a3b:free",                          # ✅ Efficient MoE architecture 
-            "nvidia/nemotron-nano-9b-v2:free",                              # ✅ Unified reasoning model
-            "openai/gpt-oss-20b:free",                                      # ✅ OpenAI OSS model
-            "openai/gpt-oss-120b:free",                                     # ✅ Larger OSS model
-            "qwen/qwen3-coder:free",                                        # ✅ Qwen coding model
-            "qwen/qwen3-4b:free",                                           # ✅ Qwen lightweight
-            "google/gemma-3n-e2b-it:free",                                  # ✅ Google Gemma
-            "google/gemma-3n-e4b-it:free",                                  # ✅ Google Gemma
+            "openai/gpt-oss-20b:free",                                      # ✅ OpenAI OSS
+            "openai/gpt-oss-120b:free",                                     # ✅ OpenAI OSS
+            "nvidia/nemotron-3-nano-30b-a3b:free",                          # ✅ MoE architecture
+            "nvidia/nemotron-nano-9b-v2:free",                              # ✅ Unified reasoning
         ],
-        index=0  # Venice Uncensored is the default
+        index=0  # Venice Uncensored
     )
     
     st.markdown("---")
