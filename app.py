@@ -56,60 +56,31 @@ with st.sidebar:
     
     provider = st.selectbox(
         "Provider",
-        ["Ollama Cloud", "OpenRouter"],
-        index=1,  # Default to OpenRouter (more reliable free models)
-        help="Ollama Cloud uses cloud-hosted models. OpenRouter uses their API."
+        ["OpenRouter", "Ollama Cloud"],
+        index=0,
+        help="OpenRouter offers the widest selection of free models. Ollama Cloud has its own set."
     )
     
     st.markdown("---")
     
     # ============================================================
-    # OLLAMA CLOUD MODELS - VERIFIED WORKING
+    # OPENROUTER FREE MODELS - VERIFIED FREE (AUGUST 2026)
     # ============================================================
-    if provider == "Ollama Cloud":
-        model = st.selectbox(
-            "Model (Ollama Cloud - Free)",
-            [
-                "qwen3.5:397b",                # ✅ Recommended replacement for qwen3-coder:480b
-                "gpt-oss:120b",                # ✅ General purpose
-                "nemotron-3-super",            # ✅ Great reasoning
-                "deepseek-v4-flash",           # ✅ Fast, 1M context
-                "gemma4:31b",                  # ✅ Google's latest
-                "glm-5.2",                     # ✅ Strong reasoning
-                "minimax-m3",                  # ✅ Latest MiniMax
-                "mistral-large-3:675b",        # ✅ Mistral's flagship
-                "kimi-k2.6",                   # ✅ Long-context agentic model
-            ],
-            index=0
-        )
-        
-        # Check if API key is set
-        ollama_api_key = st.secrets.get("OLLAMA_API_KEY", "")
-        if not ollama_api_key:
-            st.error("❌ OLLAMA_API_KEY not found in secrets. Please add it.")
-        else:
-            st.success("✅ Ollama API key found!")
-    
-    # ============================================================
-    # EXPANDED OPENROUTER FREE MODELS - AUGUST 2026
-    # ============================================================
-    else:  # OpenRouter
+    if provider == "OpenRouter":
         model = st.selectbox(
             "Model (OpenRouter - Free)",
             [
                 "openrouter/free",                           # ✅ Auto-selects best free model
-                "nvidia/nemotron-3-super-120b-a12b:free",   # ✅ 1M context, great reasoning
-                "nvidia/nemotron-3-ultra-550b-a55b:free",   # ✅ Top NVIDIA model
-                "nvidia/nemotron-3-nano-30b-a3b:free",      # ✅ MoE architecture
-                "meta-llama/llama-3.3-70b-instruct:free",   # ✅ Powerful Llama model
-                "openai/gpt-oss-120b:free",                 # ✅ Larger OpenAI OSS
-                "openai/gpt-oss-20b:free",                  # ✅ OpenAI OSS
-                "google/gemma-4-31b-it:free",               # ✅ Google's latest
-                "deepseek/deepseek-v4-flash:free",          # ✅ Fast, 1M context
-                "qwen/qwen3-coder:free",                    # ✅ Qwen coding
+                "nvidia/nemotron-3-ultra-550b-a55b:free",   # ✅ 1M context, strong reasoning [citation:1]
+                "nvidia/nemotron-3-super-120b-a12b:free",   # ✅ 1M context, efficient [citation:1]
+                "nvidia/nemotron-3-nano-30b-a3b:free",      # ✅ MoE architecture [citation:3]
+                "poolside/laguna-s-2.1:free",               # ✅ Strong coding agent [citation:1]
+                "cohere/north-mini-code:free",              # ✅ Agentic coding & terminal tasks [citation:1]
+                "openai/gpt-oss-120b:free",                 # ✅ OpenAI OSS model [citation:3]
+                "openai/gpt-oss-20b:free",                  # ✅ OpenAI OSS model [citation:3]
+                "google/gemma-4-31b-it:free",               # ✅ Google's latest [citation:3]
+                "qwen/qwen3-coder:free",                    # ✅ Qwen coding model [citation:7]
                 "qwen/qwen3-next-80b-a3b-instruct:free",    # ✅ Qwen next-gen
-                "mistralai/mistral-small-3.1-24b-instruct:free", # ✅ Efficient Mistral
-                "cognitivecomputations/dolphin-mistral-24b-venice-edition:free", # ✅ "Uncensored" model
             ],
             index=0
         )
@@ -121,11 +92,41 @@ with st.sidebar:
         else:
             st.success("✅ OpenRouter API key found!")
     
+    # ============================================================
+    # OLLAMA CLOUD FREE MODELS - VERIFIED FREE (AUGUST 2026)
+    # ============================================================
+    else:
+        model = st.selectbox(
+            "Model (Ollama Cloud - Free)",
+            [
+                "nemotron-3-ultra",                # ✅ NVIDIA's flagship [citation:2]
+                "nemotron-3-super",                # ✅ Great reasoning [citation:2]
+                "nemotron-3-nano:30b",             # ✅ Efficient MoE [citation:2]
+                "gpt-oss:120b",                    # ✅ General purpose [citation:2]
+                "gpt-oss:20b",                     # ✅ General purpose [citation:2]
+                "gemma4:31b",                      # ✅ Google's latest [citation:2]
+                "glm-4.7",                         # ✅ Strong reasoning [citation:2]
+                "minimax-m3",                      # ✅ Latest MiniMax [citation:2]
+                "ministral-3:14b",                 # ✅ Efficient model [citation:2]
+                "ministral-3:8b",                  # ✅ Lightweight [citation:2]
+                "rnj-1:8b",                        # ✅ [citation:2]
+            ],
+            index=0
+        )
+        
+        # Check if API key is set
+        ollama_api_key = st.secrets.get("OLLAMA_API_KEY", "")
+        if not ollama_api_key:
+            st.error("❌ OLLAMA_API_KEY not found in secrets. Please add it.")
+        else:
+            st.success("✅ Ollama API key found!")
+    
     st.markdown("---")
     
     # Security banner
     st.success("🔥 **GOD MODE ACTIVE**")
     st.info("🔒 **Your laptop is SAFE** - Agent runs in the cloud.")
+    st.info(f"📊 Free tier: ~20 req/min, ~200 req/day (add $10 for 1000/day) [citation:7]")
     
     st.markdown("---")
     
@@ -204,11 +205,11 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
     openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
     
     # Validate based on provider
-    if provider == "Ollama Cloud" and not ollama_api_key:
-        st.error("❌ OLLAMA_API_KEY not found in Streamlit secrets. Please add it.")
-        st.stop()
-    elif provider == "OpenRouter" and not openrouter_key:
+    if provider == "OpenRouter" and not openrouter_key:
         st.error("❌ OPENROUTER_API_KEY not found in Streamlit secrets. Please add it.")
+        st.stop()
+    elif provider == "Ollama Cloud" and not ollama_api_key:
+        st.error("❌ OLLAMA_API_KEY not found in Streamlit secrets. Please add it.")
         st.stop()
 
     # Add user message
@@ -387,53 +388,7 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                 # ============================================================
                 # API CALL - Based on Provider
                 # ============================================================
-                if provider == "Ollama Cloud":
-                    # Initialize Ollama client with cloud endpoint
-                    ollama_client = Client(
-                        host="https://ollama.com",
-                        headers={'Authorization': 'Bearer ' + ollama_api_key}
-                    )
-                    
-                    try:
-                        # Make the API call
-                        response = ollama_client.chat(
-                            model=model,
-                            messages=messages,
-                            stream=False,
-                            options={
-                                "temperature": 1.5,
-                                "top_p": 0.95,
-                                "num_predict": 4000
-                            }
-                        )
-                        
-                        # Process response
-                        if "message" in response:
-                            assistant_message = response["message"]["content"]
-                            if check_local_request(prompt):
-                                assistant_message += "\n\n🔒 **Your laptop is SAFE** - I'm a cloud agent and cannot access your local files."
-                            st.session_state.messages.append({"role": "assistant", "content": assistant_message})
-                            st.markdown(assistant_message)
-                        else:
-                            st.error("❌ Unexpected response format from Ollama Cloud")
-                            st.json(response)
-                    
-                    except Exception as e:
-                        error_msg = str(e)
-                        if "403" in error_msg:
-                            st.error("❌ This model requires a subscription. Please select a free model from the dropdown.")
-                            st.info("💡 Try selecting 'qwen3.5:397b' or 'gpt-oss:120b' - these are free.")
-                        elif "404" in error_msg or "not found" in error_msg:
-                            st.error(f"❌ Model '{model}' not found on Ollama Cloud.")
-                            st.info("💡 Try selecting 'qwen3.5:397b' or 'gpt-oss:120b' from the dropdown.")
-                        elif "410" in error_msg or "retired" in error_msg:
-                            st.error(f"❌ Model '{model}' has been retired. Please select a different model.")
-                            st.info("💡 Try selecting 'qwen3.5:397b' or 'gpt-oss:120b' from the dropdown.")
-                        else:
-                            st.error(f"❌ Ollama Cloud Error: {error_msg}")
-                        st.stop()
-                
-                else:  # OpenRouter
+                if provider == "OpenRouter":
                     headers = {
                         "Authorization": f"Bearer {openrouter_key}",
                         "HTTP-Referer": "https://openclaw.streamlit.app",
@@ -557,12 +512,55 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                         
                         st.session_state.messages.append({"role": "assistant", "content": assistant_message})
                         st.markdown(assistant_message)
+                
+                else:  # Ollama Cloud
+                    # Initialize Ollama client with cloud endpoint
+                    ollama_client = Client(
+                        host="https://ollama.com",
+                        headers={'Authorization': 'Bearer ' + ollama_api_key}
+                    )
+                    
+                    try:
+                        # Make the API call
+                        response = ollama_client.chat(
+                            model=model,
+                            messages=messages,
+                            stream=False,
+                            options={
+                                "temperature": 1.5,
+                                "top_p": 0.95,
+                                "num_predict": 4000
+                            }
+                        )
+                        
+                        # Process response
+                        if "message" in response:
+                            assistant_message = response["message"]["content"]
+                            if check_local_request(prompt):
+                                assistant_message += "\n\n🔒 **Your laptop is SAFE** - I'm a cloud agent and cannot access your local files."
+                            st.session_state.messages.append({"role": "assistant", "content": assistant_message})
+                            st.markdown(assistant_message)
+                        else:
+                            st.error("❌ Unexpected response format from Ollama Cloud")
+                            st.json(response)
+                    
+                    except Exception as e:
+                        error_msg = str(e)
+                        if "403" in error_msg:
+                            st.error("❌ This model requires a subscription. Please select a free model from the dropdown.")
+                        elif "404" in error_msg or "not found" in error_msg:
+                            st.error(f"❌ Model '{model}' not found on Ollama Cloud.")
+                        elif "410" in error_msg or "retired" in error_msg:
+                            st.error(f"❌ Model '{model}' has been retired. Please select a different model.")
+                        else:
+                            st.error(f"❌ Ollama Cloud Error: {error_msg}")
+                        st.stop()
                     
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
                 import traceback
                 st.code(traceback.format_exc())
-                if provider == "Ollama Cloud":
-                    st.info("💡 Make sure your OLLAMA_API_KEY is correct. Try selecting 'qwen3.5:397b' as the model.")
-                else:
+                if provider == "OpenRouter":
                     st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
+                else:
+                    st.info("💡 Try selecting a different model from the dropdown.")
