@@ -59,8 +59,8 @@ with st.sidebar:
     provider = st.selectbox(
         "Provider",
         ["OpenRouter", "Ollama Cloud"],
-        index=0,
-        help="OpenRouter offers the widest selection of agentic models. Ollama Cloud has its own set."
+        index=1,  # Default to Ollama Cloud to showcase Muse Glimmer
+        help="OpenRouter offers agentic models. Ollama Cloud now has Meta's Muse Glimmer for agentic tasks."
     )
     
     st.markdown("---")
@@ -82,7 +82,7 @@ with st.sidebar:
                 "mistralai/mistral-small-3.1-24b-instruct:free",     # ✅ Good agentic capabilities
                 "cognitivecomputations/dolphin-mistral-24b-venice-edition:free", # ✅ Unrestricted
             ],
-            index=1  # Default to Nemotron Ultra
+            index=1
         )
         
         # Check if API key is set
@@ -93,12 +93,16 @@ with st.sidebar:
             st.success("✅ OpenRouter API key found!")
     
     # ============================================================
-    # AGENTIC OLLAMA CLOUD MODELS - VERIFIED AUGUST 2026
+    # AGENTIC OLLAMA CLOUD MODELS - INCLUDING META'S MUSE GLIMMER
     # ============================================================
     else:
+        st.subheader("🔥 Meta's Muse Glimmer Now Available!")
+        st.info("Muse Glimmer is a 30B multimodal model purpose-built for agent workloads with 128K+ context [citation:1][citation:10]")
+        
         model = st.selectbox(
             "Model (Agentic - Free)",
             [
+                "muse-glimmer:30b-mlx",            # 🔥 META'S NEW AGENTIC MODEL - BEST FOR AGENTS
                 "nemotron-3-ultra",                # ✅ NVIDIA's flagship agentic model
                 "nemotron-3-super",                # ✅ Great reasoning
                 "gpt-oss:120b",                    # ✅ General purpose
@@ -106,7 +110,7 @@ with st.sidebar:
                 "glm-4.7",                         # ✅ Strong reasoning
                 "minimax-m3",                      # ✅ Latest MiniMax
             ],
-            index=0
+            index=0  # Default to Muse Glimmer
         )
         
         # Check if API key is set
@@ -548,6 +552,8 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                             st.error("❌ This model requires a subscription. Please select a free model from the dropdown.")
                         elif "404" in error_msg or "not found" in error_msg:
                             st.error(f"❌ Model '{model}' not found on Ollama Cloud.")
+                            if "muse-glimmer" in model.lower():
+                                st.info("💡 Muse Glimmer requires Ollama 0.32.7+. Make sure your Ollama version is up to date [citation:1][citation:12]")
                         elif "410" in error_msg or "retired" in error_msg:
                             st.error(f"❌ Model '{model}' has been retired. Please select a different model.")
                         else:
