@@ -1,29 +1,33 @@
-name: Run AI Agent
+name: Run AI Agent (Manual Only)
 
 on:
-  # Run on a schedule (every 6 hours)
-  schedule:
-    - cron: '0 */6 * * *'
-  
-  # Allow manual trigger from GitHub UI
+  # Only allow manual trigger from GitHub UI
   workflow_dispatch:
     inputs:
       goal:
         description: 'What should the agent do?'
         required: false
         default: 'Research the latest developments in AI and provide a 3-point summary.'
-  
-  # Run when code is pushed
-  push:
-    branches: [ main ]
+      model:
+        description: 'OpenRouter Model to use'
+        required: false
+        default: 'openrouter/free'
+        type: choice
+        options:
+          - 'openrouter/free'
+          - 'nvidia/nemotron-3-ultra-550b-a55b:free'
+          - 'nvidia/nemotron-3-super-120b-a12b:free'
+          - 'poolside/laguna-s-2.1:free'
+          - 'cohere/north-mini-code:free'
+          - 'openai/gpt-oss-20b:free'
 
 jobs:
   agent-run:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Allow the agent to push changes if needed
-      issues: write    # Allow creating issues
-      pull-requests: write  # Allow PR comments
+      contents: write
+      issues: write
+      pull-requests: write
 
     steps:
       - name: Checkout repository
@@ -41,47 +45,39 @@ jobs:
       - name: Run Agent
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          OPENROUTER_MODEL: ${{ secrets.OPENROUTER_MODEL || 'openrouter/free' }}
+          OPENROUTER_MODEL: ${{ github.event.inputs.model || 'openrouter/free' }}
           AGENT_GOAL: ${{ github.event.inputs.goal || 'Research the latest developments in AI and provide a 3-point summary.' }}
         run: |
           echo "🤖 Starting agent..."
+          echo "📋 Goal: $AGENT_GOAL"
+          echo "🧠 Model: $OPENROUTER_MODEL"
+          echo ""
           node agent.js | tee output.txt
           echo "📊 Agent output:" > result.md
           echo '```' >> result.md
           cat output.txt >> result.md
           echo '```' >> result.md
 
-      - name: Save results
+      - name: Save results as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: agent-results
+          name: agent-results-${{ github.run_id }}
           path: result.md
           retention-days: 7
 
-      - name: Comment on PR (if triggered from PR)
-        if: github.event_name == 'pull_request'
+      - name: Create Issue with results
+        if: always()
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const result = fs.readFileSync('result.md', 'utf8');
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: result
-            });
-
-      - name: Create Issue with results (if scheduled)
-        if: github.event_name == 'schedule'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const result = fs.readFileSync('result.md', 'utf8');
+            const date = new Date().toISOString().split('T')[0];
+            const goal = process.env.AGENT_GOAL || 'No goal specified';
+            const model = process.env.OPENROUTER_MODEL || 'default';
             github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `🤖 Agent Report - ${new Date().toISOString().split('T')[0]}`,
-              body: result
+              title: `🤖 Manual Agent Report - ${date}`,
+              body: `## 🤖 Manual Agent Report - ${date}\n\n**Goal:** ${goal}\n\n**Model:** ${model}\n\n### Results\n\n${result}`
             });
