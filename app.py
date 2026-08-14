@@ -81,16 +81,19 @@ with st.sidebar:
             "Model (Agentic - Free)",
             [
                 "openrouter/free",                                    # ✅ Auto-selects best available
-                "nvidia/nemotron-3-ultra-550b-a55b:free",            # ✅ Agent orchestration, deep research [citation:1]
-                "nvidia/nemotron-3-super-120b-a12b:free",            # ✅ Multi-agent applications [citation:1]
-                "poolside/laguna-s-2.1:free",                        # ✅ Agentic coding [citation:1]
+                "nvidia/nemotron-3-ultra-550b-a55b:free",            # ✅ Agent orchestration, 1M context [citation:1]
+                "nvidia/nemotron-3-super-120b-a12b:free",            # ✅ Multi-agent, 1M context [citation:1]
+                "poolside/laguna-s-2.1:free",                        # ✅ Agentic coding, 40.4% on DeepSWE [citation:1]
                 "cohere/north-mini-code:free",                       # ✅ Agentic software engineering [citation:1]
-                "openai/gpt-oss-20b:free",                           # ✅ OpenAI OSS [citation:5]
-                "google/gemma-4-31b-it:free",                        # ✅ Vision + tools [citation:5]
-                "qwen/qwen3.6-plus:free",                            # ✅ High intelligence
+                "qwen/qwen3.6-plus:free",                            # ✅ 1M context, agent programming [citation:12]
+                "inclusionai/ling-3.0-tiny:free",                    # ✅ Responsive agents, 262K context [citation:9]
+                "elephant-alpha:free",                               # ✅ 1T params, 256K context, free [citation:5]
             ],
             index=0
         )
+        
+        # Free tier info
+        st.info("📊 Free tier: ~20 req/min, ~50/day fresh account; ~1000/day after $10 credit [citation:8]")
         
         # Check if API key is set
         openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
@@ -106,17 +109,24 @@ with st.sidebar:
         model = st.selectbox(
             "Model (Agentic - Free)",
             [
-                "nemotron-3-super:cloud",                # ✅ NVIDIA flagship reasoning [citation:2]
-                "gpt-oss:20b-cloud",                     # ✅ OpenAI open-source [citation:2]
-                "gemma3:27b-cloud",                      # ✅ Google's latest [citation:2]
-                "devstral-small-2:24b-cloud",            # ✅ Coding-specialized [citation:2]
-                "minimax-m2.5:cloud",                    # ✅ Top SWE benchmark [citation:2]
-                "qwen3-coder:480b-cloud",                # ✅ Massive coding model [citation:2]
-                "ministral-3:8b-cloud",                  # ✅ Efficient, fast [citation:2]
-                "glm-4.7:cloud",                         # ✅ Strong reasoning [citation:2]
+                "nemotron-3-ultra:cloud",                            # ✅ NVIDIA flagship agentic model [citation:6]
+                "nemotron-3-super:cloud",                            # ✅ Multi-agent applications [citation:6]
+                "nemotron-3-nano:30b-cloud",                         # ✅ Efficient MoE [citation:6]
+                "gpt-oss:120b-cloud",                                # ✅ OpenAI open-source [citation:6]
+                "gpt-oss:20b-cloud",                                 # ✅ OpenAI open-source [citation:6]
+                "gemma4:31b-cloud",                                  # ✅ Google's latest [citation:6]
+                "glm-4.7:cloud",                                     # ✅ Strong reasoning [citation:6]
+                "minimax-m3:cloud",                                  # ✅ Latest MiniMax [citation:6]
+                "qwen3-coder:480b-cloud",                            # ✅ Massive coding model [citation:6]
+                "ministral-3:8b-cloud",                              # ✅ Efficient, fast [citation:6]
+                "deepseek-v4-flash:cloud",                           # ✅ Fast reasoning [citation:10]
+                "kimi-k2.6:cloud",                                   # ✅ Long-context agentic [citation:10]
             ],
             index=0
         )
+        
+        # Free tier info
+        st.info("📊 All Ollama Cloud models are free with usage limits. Level 1-2 models consume less quota [citation:10]")
         
         # Check if API key is set
         ollama_api_key = st.secrets.get("OLLAMA_API_KEY", "")
@@ -130,7 +140,6 @@ with st.sidebar:
     # Security banner
     st.success("🔥 **GOD MODE ACTIVE**")
     st.info("🔒 **Your laptop is SAFE** - Agent runs in the cloud.")
-    st.info(f"📊 Free tier: ~20 req/min, ~200 req/day (add $10 for 1000/day)")
     
     st.markdown("---")
     
@@ -590,6 +599,7 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                             st.error("❌ This model requires a subscription. Please select a free model from the dropdown.")
                         elif "404" in error_msg or "not found" in error_msg:
                             st.error(f"❌ Model '{model}' not found on Ollama Cloud.")
+                            st.info("💡 Try selecting a different model from the dropdown.")
                         elif "410" in error_msg or "retired" in error_msg:
                             st.error(f"❌ Model '{model}' has been retired. Please select a different model.")
                         else:
