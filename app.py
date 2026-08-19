@@ -60,40 +60,55 @@ with st.sidebar:
     st.header("⚙️ Configuration")
 
     # ============================================================
-    # PROVIDER SELECTION - NOW WITH HUGGING FACE
+    # PROVIDER SELECTION
     # ============================================================
     st.subheader("🔌 Select AI Provider")
 
     provider = st.selectbox(
         "Provider",
-        ["OpenRouter", "Ollama Cloud", "Hugging Face"],
+        ["OpenRouter", "Ollama Cloud"],
         index=0,
-        help="OpenRouter offers the widest selection of agentic models. Ollama Cloud has its own set. Hugging Face provides free inference via their Serverless API."
+        help="OpenRouter offers the widest selection of agentic models including Hugging Face models. Ollama Cloud has its own set."
     )
 
     st.markdown("---")
 
     # ============================================================
-    # OPENROUTER FREE MODELS
+    # OPENROUTER FREE MODELS (including Hugging Face via OpenRouter)
     # ============================================================
     if provider == "OpenRouter":
         model = st.selectbox(
             "Model (Agentic - Free)",
             [
+                # OpenRouter's auto-select
                 "openrouter/free",                                    # ✅ Auto-selects best available
+                
+                # NVIDIA Nemotron series
                 "nvidia/nemotron-3-ultra-550b-a55b:free",            # ✅ Agent orchestration, 1M context 
                 "nvidia/nemotron-3-super-120b-a12b:free",            # ✅ Multi-agent, 1M context 
+                "nvidia/nemotron-3-nano-30b-a3b:free",               # ✅ Efficient MoE 
+                
+                # Agentic coding models
                 "poolside/laguna-s-2.1:free",                        # ✅ Agentic coding, 40.4% on DeepSWE 
                 "cohere/north-mini-code:free",                       # ✅ Agentic software engineering 
+                "poolside/laguna-xs-2.1:free",                       # ✅ Lighter coding agent 
+                
+                # Hugging Face models via OpenRouter
+                "huggingface/meta-llama/Llama-3.1-8B-Instruct:free", # ✅ Llama 3.1 via HF 
+                "huggingface/mistralai/Mistral-7B-Instruct-v0.3:free", # ✅ Mistral 7B via HF 
+                "huggingface/HuggingFaceH4/zephyr-7b-beta:free",     # ✅ Zephyr 7B via HF 
+                "huggingface/microsoft/Phi-3-mini-4k-instruct:free", # ✅ Phi-3 via HF 
+                "huggingface/Qwen/Qwen2.5-7B-Instruct:free",         # ✅ Qwen 2.5 via HF 
+                "huggingface/deepseek-ai/deepseek-llm-7b-chat:free", # ✅ DeepSeek 7B via HF 
+                
+                # Google models
                 "google/gemma-4-31b-it:free",                        # ✅ Vision + tools 
                 "inclusionai/ling-3.0-tiny:free",                    # ✅ Responsive agents, 262K context 
-                "nvidia/nemotron-3-nano-30b-a3b:free",               # ✅ Efficient MoE 
-                "poolside/laguna-xs-2.1:free",                       # ✅ Lighter coding agent 
             ],
             index=0
         )
 
-        st.info("📊 Free tier: ~20 req/min, ~200 req/day ")
+        st.info("📊 Free tier: ~20 req/min, ~200 req/day. Hugging Face models are accessed via OpenRouter with the `huggingface/` prefix ")
 
         openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
         if not openrouter_key:
@@ -104,7 +119,7 @@ with st.sidebar:
     # ============================================================
     # OLLAMA CLOUD FREE MODELS
     # ============================================================
-    elif provider == "Ollama Cloud":
+    else:  # Ollama Cloud
         model = st.selectbox(
             "Model (Agentic - Free)",
             [
@@ -129,33 +144,6 @@ with st.sidebar:
             st.error("❌ OLLAMA_API_KEY not found in secrets. Please add it.")
         else:
             st.success("✅ Ollama API key found!")
-
-    # ============================================================
-    # HUGGING FACE FREE MODELS (via Serverless Inference API)
-    # ============================================================
-    else:  # Hugging Face
-        model = st.selectbox(
-            "Model (Hugging Face - Free)",
-            [
-                "meta-llama/Llama-3.1-8B-Instruct",                  # ✅ Strong Llama model 
-                "mistralai/Mistral-7B-Instruct-v0.3",                # ✅ Mistral 7B 
-                "google/gemma-2-2b-it",                              # ✅ Gemma 2B 
-                "HuggingFaceH4/zephyr-7b-beta",                      # ✅ Zephyr 
-                "microsoft/Phi-3-mini-4k-instruct",                  # ✅ Phi-3 
-                "Qwen/Qwen2.5-7B-Instruct",                          # ✅ Qwen 7B 
-                "deepseek-ai/deepseek-llm-7b-chat",                  # ✅ DeepSeek 7B 
-                "upstage/SOLAR-10.7B-Instruct-v1.0",                 # ✅ SOLAR 10.7B 
-            ],
-            index=0
-        )
-
-        st.info("📊 Hugging Face Serverless Inference API has usage limits. Free tier includes many models with your HF token [citation:8][citation:11]")
-
-        hf_token = st.secrets.get("HF_TOKEN", "")
-        if not hf_token:
-            st.error("❌ HF_TOKEN not found in secrets. Please add it.")
-        else:
-            st.success("✅ Hugging Face token found!")
 
     st.markdown("---")
 
@@ -248,7 +236,6 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
     # Get API keys
     openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
     ollama_api_key = st.secrets.get("OLLAMA_API_KEY", "")
-    hf_token = st.secrets.get("HF_TOKEN", "")
 
     # Validate based on provider
     if provider == "OpenRouter" and not openrouter_key:
@@ -256,9 +243,6 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
         st.stop()
     elif provider == "Ollama Cloud" and not ollama_api_key:
         st.error("❌ OLLAMA_API_KEY not found in Streamlit secrets. Please add it.")
-        st.stop()
-    elif provider == "Hugging Face" and not hf_token:
-        st.error("❌ HF_TOKEN not found in Streamlit secrets. Please add it.")
         st.stop()
 
     # Add user message
@@ -588,7 +572,7 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                         st.session_state.messages.append({"role": "assistant", "content": assistant_message})
                         st.markdown(assistant_message)
 
-                elif provider == "Ollama Cloud":
+                else:  # Ollama Cloud
                     # Initialize Ollama client with cloud endpoint
                     ollama_client = Client(
                         host="https://ollama.com",
@@ -632,77 +616,11 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                             st.error(f"❌ Ollama Cloud Error: {error_msg}")
                         st.stop()
 
-                else:  # Hugging Face - Using Serverless Inference API
-                    # Hugging Face uses a different API format
-                    hf_api_url = f"https://api-inference.huggingface.co/models/{model}"
-                    headers = {
-                        "Authorization": f"Bearer {hf_token}",
-                        "Content-Type": "application/json"
-                    }
-
-                    # Convert messages to HF format
-                    # For chat models, use a text prompt
-                    prompt_text = ""
-                    for msg in messages:
-                        if msg["role"] == "system":
-                            prompt_text += f"System: {msg['content']}\n"
-                        elif msg["role"] == "user":
-                            prompt_text += f"User: {msg['content']}\n"
-                        elif msg["role"] == "assistant":
-                            prompt_text += f"Assistant: {msg['content']}\n"
-                    prompt_text += "Assistant: "
-
-                    payload = {
-                        "inputs": prompt_text,
-                        "parameters": {
-                            "max_new_tokens": 4000,
-                            "temperature": 1.5,
-                            "top_p": 0.95,
-                            "return_full_text": False
-                        }
-                    }
-
-                    if show_debug:
-                        st.expander("🔍 Debug: HF Request Payload").json(payload)
-
-                    response = requests.post(
-                        hf_api_url,
-                        headers=headers,
-                        json=payload,
-                        timeout=120
-                    )
-
-                    if response.status_code != 200:
-                        st.error(f"❌ Hugging Face Error {response.status_code}: {response.text[:500]}")
-                        if response.status_code == 403:
-                            st.info("💡 Your HF_TOKEN may not have access to this model. Try a different model or check your token permissions [citation:8][citation:12]")
-                        elif response.status_code == 429:
-                            st.info("💡 Rate limit exceeded. Try again later or select a different model [citation:11]")
-                        st.stop()
-
-                    result = response.json()
-
-                    if show_debug:
-                        st.expander("🔍 Debug: HF API Response").json(result)
-
-                    # HF API returns a list with the generated text
-                    if isinstance(result, list) and len(result) > 0 and "generated_text" in result[0]:
-                        assistant_message = result[0]["generated_text"].strip()
-                        if check_local_request(prompt):
-                            assistant_message += "\n\n🔒 **Your laptop is SAFE** - I'm a cloud agent and cannot access your local files."
-                        st.session_state.messages.append({"role": "assistant", "content": assistant_message})
-                        st.markdown(assistant_message)
-                    else:
-                        st.error("❌ Unexpected response format from Hugging Face")
-                        st.json(result)
-
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
                 import traceback
                 st.code(traceback.format_exc())
                 if provider == "OpenRouter":
                     st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
-                elif provider == "Ollama Cloud":
-                    st.info("💡 Try selecting a different model from the dropdown.")
                 else:
-                    st.info("💡 Try selecting a different Hugging Face model or check your HF_TOKEN [citation:8][citation:12]")
+                    st.info("💡 Try selecting a different model from the dropdown.")
