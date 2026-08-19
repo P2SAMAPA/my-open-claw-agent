@@ -74,7 +74,7 @@ with st.sidebar:
     st.markdown("---")
 
     # ============================================================
-    # VERIFIED FREE OPENROUTER MODELS - AUGUST 2026
+    # LATEST OPENROUTER FREE MODELS - AUGUST 2026
     # ============================================================
     if provider == "OpenRouter":
         model = st.selectbox(
@@ -85,16 +85,16 @@ with st.sidebar:
                 "nvidia/nemotron-3-super-120b-a12b:free",            # ✅ Multi-agent, 1M context [citation:1]
                 "poolside/laguna-s-2.1:free",                        # ✅ Agentic coding, 40.4% on DeepSWE [citation:1]
                 "cohere/north-mini-code:free",                       # ✅ Agentic software engineering [citation:1]
-                "google/gemma-4-31b-it:free",                        # ✅ Vision + tools [citation:5]
-                "inclusionai/ling-3.0-tiny:free",                    # ✅ Responsive agents, 262K context [citation:1]
-                "nvidia/nemotron-3-nano-30b-a3b:free",               # ✅ Efficient MoE [citation:5]
-                "poolside/laguna-xs-2.1:free",                       # ✅ Lighter coding agent [citation:5]
+                "google/gemma-4-31b-it:free",                        # ✅ Vision + tools [citation:9]
+                "inclusionai/ling-3.0-tiny:free",                    # ✅ Responsive agents, 262K context [citation:7]
+                "nvidia/nemotron-3-nano-30b-a3b:free",               # ✅ Efficient MoE [citation:9]
+                "poolside/laguna-xs-2.1:free",                       # ✅ Lighter coding agent [citation:1]
             ],
             index=0
         )
 
         # Free tier info
-        st.info("📊 Free tier: ~20 req/min, ~200 req/day [citation:5]")
+        st.info("📊 Free tier: ~20 req/min, ~200 req/day [citation:9]")
 
         # Check if API key is set
         openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
@@ -104,28 +104,28 @@ with st.sidebar:
             st.success("✅ OpenRouter API key found!")
 
     # ============================================================
-    # VERIFIED FREE OLLAMA CLOUD MODELS - AUGUST 2026
+    # LATEST OLLAMA CLOUD FREE MODELS - AUGUST 2026
     # ============================================================
     else:
         model = st.selectbox(
             "Model (Agentic - Free)",
             [
-                "nemotron-3-ultra:cloud",                            # ✅ NVIDIA flagship, Level 3-4 usage [citation:10]
+                "nemotron-3-ultra:cloud",                            # ✅ NVIDIA flagship [citation:10]
                 "nemotron-3-super:cloud",                            # ✅ Level 2 usage, efficient [citation:10]
-                "deepseek-v4-flash:cloud",                           # ✅ Fast reasoning, Level 3-4 usage [citation:10]
-                "gemma4:31b-cloud",                                  # ✅ Google's latest [citation:2]
-                "gpt-oss:120b-cloud",                                # ✅ OpenAI open-source [citation:2]
-                "glm-5.2:cloud",                                     # ✅ Z.ai's latest, agent-oriented [citation:10]
-                "minimax-m3:cloud",                                  # ✅ Latest MiniMax [citation:10]
-                "qwen3.5:122b-cloud",                                # ✅ Qwen 3.5 [citation:10]
+                "deepseek-v4-flash:cloud",                           # ✅ Replaces retired v3 models [citation:12]
+                "gemma4:31b-cloud",                                  # ✅ Replaces retired gemma3 models [citation:12]
+                "gpt-oss:120b-cloud",                                # ✅ OpenAI open-source [citation:8]
+                "glm-5.2:cloud",                                     # ✅ Replaces retired glm-4.7 [citation:12]
+                "minimax-m3:cloud",                                  # ✅ Replaces retired minimax-m2.1 [citation:12]
+                "qwen3.5:397b-cloud",                                # ✅ Replaces retired qwen3-coder:480b [citation:12]
                 "ministral-3:8b-cloud",                              # ✅ Efficient, Level 1-2 usage [citation:10]
-                "kimi-k2.6:cloud",                                   # ✅ Long-context agentic [citation:10]
+                "kimi-k2.6:cloud",                                   # ✅ Replaces retired kimi-k2.5 [citation:12]
             ],
             index=0
         )
 
         # Free tier info
-        st.info("📊 All models free. Heavier models (Level 3-4) consume more free quota [citation:10]")
+        st.info("📊 All models free. Heavier models consume more quota. Free quota resets every 5 hours [citation:10]")
 
         # Check if API key is set
         ollama_api_key = st.secrets.get("OLLAMA_API_KEY", "")
