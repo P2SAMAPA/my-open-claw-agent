@@ -857,4 +857,151 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                             display_message += "🔒 **Your laptop is SAFE**\n\n"
 
                         display_message += "**Final Answer:**\n\n" + final_response
-                        st.session_state.messages.append({"role":
+                        st.session_state.messages.append({"role": "assistant", "content": display_message})
+                        st.markdown(display_message)
+                    else:
+                        assistant_message = message["content"]
+
+                        if check_local_request(prompt):
+                            assistant_message += "\n\n🔒 **Your laptop is SAFE** - I'm a cloud agent and cannot access your local files."
+
+                        st.session_state.messages.append({"role": "assistant", "content": assistant_message})
+                        st.markdown(assistant_message)
+
+                else:  # Cerebras
+                    headers = {
+                        "Authorization": f"Bearer {cerebras_api_key}",
+                        "Content-Type": "application/json"
+                    }
+
+                    payload = {
+                        "model": model,
+                        "messages": messages,
+                        "max_tokens": 8000,
+                        "temperature": 1.5,
+                        "top_p": 0.95,
+                        "tools": tools,
+                        "tool_choice": "auto"
+                    }
+
+                    if show_debug:
+                        st.expander("🔍 Debug: Cerebras Request Payload").json(payload)
+
+                    response = requests.post(
+                        url="https://inference.cerebras.ai/v1/chat/completions",
+                        headers=headers,
+                        json=payload,
+                        timeout=120
+                    )
+
+                    if response.status_code != 200:
+                        st.error(f"❌ Cerebras Error {response.status_code}: {response.text[:500]}")
+                        st.info("💡 Try selecting a different model from the dropdown.")
+                        st.stop()
+
+                    result = response.json()
+
+                    if show_debug:
+                        st.expander("🔍 Debug: Cerebras API Response").json(result)
+
+                    if "choices" not in result or len(result["choices"]) == 0:
+                        st.error("❌ No response from the model.")
+                        st.stop()
+
+                    message = result["choices"][0]["message"]
+                    display_message = ""
+
+                    # Process tool calls - Cerebras supports tool calling
+                    if "tool_calls" in message and message["tool_calls"]:
+                        display_message += "🔧 Executing tools in GOD MODE...\n\n"
+
+                        tool_messages = []
+
+                        for tool_call in message["tool_calls"]:
+                            tool_name = tool_call["function"]["name"]
+                            tool_call_id = tool_call["id"]
+                            params = json.loads(tool_call["function"]["arguments"])
+
+                            display_message += f"**Tool:** {tool_name}\n"
+                            display_message += f"**Parameters:** {json.dumps(params, indent=2)}\n\n"
+
+                            result_text = execute_tool(tool_name, params)
+                            display_message += f"**Result:**\n```\n{result_text[:1000]}{'...' if len(result_text) > 1000 else ''}\n```\n\n"
+
+                            tool_messages.append({
+                                "role": "tool",
+                                "tool_call_id": tool_call_id,
+                                "name": tool_name,
+                                "content": result_text
+                            })
+
+                        second_messages = messages.copy()
+                        second_messages.append({
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": message["tool_calls"]
+                        })
+
+                        for tool_result in tool_messages:
+                            second_messages.append(tool_result)
+
+                        second_payload = {
+                            "model": model,
+                            "messages": second_messages,
+                            "max_tokens": 8000,
+                            "temperature": 1.5,
+                            "top_p": 0.95
+                        }
+
+                        if show_debug:
+                            st.expander("🔍 Debug: Cerebras Second Request Payload").json(second_payload)
+
+                        response2 = requests.post(
+                            url="https://inference.cerebras.ai/v1/chat/completions",
+                            headers=headers,
+                            json=second_payload,
+                            timeout=120
+                        )
+
+                        if response2.status_code != 200:
+                            st.error(f"❌ Cerebras Error in second call: {response2.text[:500]}")
+                            st.stop()
+
+                        result2 = response2.json()
+
+                        if show_debug:
+                            st.expander("🔍 Debug: Cerebras Second API Response").json(result2)
+
+                        if "choices" not in result2 or len(result2["choices"]) == 0:
+                            st.error("❌ No response from the model in the second call.")
+                            st.stop()
+
+                        final_response = result2["choices"][0]["message"]["content"]
+
+                        if check_local_request(prompt):
+                            display_message += "🔒 **Your laptop is SAFE**\n\n"
+
+                        display_message += "**Final Answer:**\n\n" + final_response
+                        st.session_state.messages.append({"role": "assistant", "content": display_message})
+                        st.markdown(display_message)
+                    else:
+                        assistant_message = message["content"]
+
+                        if check_local_request(prompt):
+                            assistant_message += "\n\n🔒 **Your laptop is SAFE** - I'm a cloud agent and cannot access your local files."
+
+                        st.session_state.messages.append({"role": "assistant", "content": assistant_message})
+                        st.markdown(assistant_message)
+
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
+                import traceback
+                st.code(traceback.format_exc())
+                if provider == "OpenRouter":
+                    st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
+                elif provider == "Groq":
+                    st.info("💡 Check your GROQ_API_KEY and try again.")
+                elif provider == "Cerebras":
+                    st.info("💡 Check your CEREBRAS_API_KEY and try again.")
+                else:
+                    st.info("💡 Try selecting a different model from the dropdown.")
