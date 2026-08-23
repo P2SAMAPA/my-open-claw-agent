@@ -55,95 +55,214 @@ AVAILABLE TOOLS:
 - fetch_webpage: Fetch and scrape ANY webpage content
 """
 
+# ============================================================
+# DYNAMIC MODEL FETCHING FUNCTIONS
+# ============================================================
+
+def fetch_openrouter_models(api_key):
+    """Fetch available models from OpenRouter API"""
+    try:
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        response = requests.get(
+            "https://openrouter.ai/api/v1/models",
+            headers=headers,
+            timeout=30
+        )
+        if response.status_code == 200:
+            data = response.json()
+            models = []
+            for model in data.get("data", []):
+                model_id = model.get("id", "")
+                # Only include free models (those with :free suffix or no cost)
+                if ":free" in model_id or "free" in model_id.lower():
+                    models.append(model_id)
+            return sorted(models)[:50]  # Limit to 50 models
+        return None
+    except Exception as e:
+        st.error(f"Error fetching OpenRouter models: {str(e)}")
+        return None
+
+def fetch_ollama_cloud_models():
+    """Fetch available models from Ollama Cloud"""
+    try:
+        response = requests.get(
+            "https://ollama.com/api/tags",
+            timeout=30
+        )
+        if response.status_code == 200:
+            data = response.json()
+            models = [m.get("name", "") for m in data.get("models", [])]
+            return sorted(models)
+        return None
+    except Exception as e:
+        st.error(f"Error fetching Ollama Cloud models: {str(e)}")
+        return None
+
+def fetch_groq_models(api_key):
+    """Fetch available free models from Groq"""
+    try:
+        # Groq uses a different endpoint - we'll use a known list with dynamic fallback
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        response = requests.get(
+            "https://api.groq.com/openai/v1/models",
+            headers=headers,
+            timeout=30
+        )
+        if response.status_code == 200:
+            data = response.json()
+            models = [m.get("id", "") for m in data.get("data", []) if m.get("id", "").startswith("llama-") or "mixtral" in m.get("id", "").lower()]
+            return sorted(models) if models else get_groq_fallback_models()
+        return get_groq_fallback_models()
+    except Exception as e:
+        return get_groq_fallback_models()
+
+def get_groq_fallback_models():
+    """Fallback list of known Groq free models"""
+    return [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "llama-4-scout-17b-128e-instruct",
+        "llama-4-maverick-17b-128e-instruct",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
+        "qwen-3-32b",
+        "groq-compound",
+        "groq-compound-mini"
+    ]
+
+def fetch_cerebras_models(api_key):
+    """Fetch available free models from Cerebras"""
+    try:
+        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+        response = requests.get(
+            "https://inference.cerebras.ai/v1/models",
+            headers=headers,
+            timeout=30
+        )
+        if response.status_code == 200:
+            data = response.json()
+            models = [m.get("id", "") for m in data.get("data", [])]
+            return sorted(models) if models else get_cerebras_fallback_models()
+        return get_cerebras_fallback_models()
+    except Exception as e:
+        return get_cerebras_fallback_models()
+
+def get_cerebras_fallback_models():
+    """Fallback list of known Cerebras free models"""
+    return [
+        "llama-3.3-70b",
+        "qwen-3-235b-a22b",
+        "gpt-oss-120b",
+        "qwen-3-32b",
+        "llama-3.1-8b",
+        "zai-glm-4.7",
+        "gemma-4-31b"
+    ]
+
 # Sidebar
 with st.sidebar:
     st.header("⚙️ Configuration")
 
     # ============================================================
-    # PROVIDER SELECTION
+    # PROVIDER SELECTION - Now with Groq and Cerebras
     # ============================================================
     st.subheader("🔌 Select AI Provider")
 
     provider = st.selectbox(
         "Provider",
-        ["OpenRouter", "Ollama Cloud"],
+        ["OpenRouter", "Ollama Cloud", "Groq", "Cerebras"],
         index=0,
-        help="OpenRouter offers the widest selection of agentic models including Hugging Face models. Ollama Cloud has its own set."
+        help="OpenRouter: 400+ models. Ollama Cloud: Cloud-hosted models. Groq: Ultra-fast inference. Cerebras: Ultra-fast inference."
     )
 
     st.markdown("---")
 
     # ============================================================
-    # OPENROUTER FREE MODELS (including Hugging Face via OpenRouter)
+    # DYNAMIC MODEL SELECTION BASED ON PROVIDER
     # ============================================================
     if provider == "OpenRouter":
-        model = st.selectbox(
-            "Model (Agentic - Free)",
-            [
-                # OpenRouter's auto-select
-                "openrouter/free",                                    # ✅ Auto-selects best available
-                
-                # NVIDIA Nemotron series
-                "nvidia/nemotron-3-ultra-550b-a55b:free",            # ✅ Agent orchestration, 1M context 
-                "nvidia/nemotron-3-super-120b-a12b:free",            # ✅ Multi-agent, 1M context 
-                "nvidia/nemotron-3-nano-30b-a3b:free",               # ✅ Efficient MoE 
-                
-                # Agentic coding models
-                "poolside/laguna-s-2.1:free",                        # ✅ Agentic coding, 40.4% on DeepSWE 
-                "cohere/north-mini-code:free",                       # ✅ Agentic software engineering 
-                "poolside/laguna-xs-2.1:free",                       # ✅ Lighter coding agent 
-                
-                # Hugging Face models via OpenRouter
-                "huggingface/meta-llama/Llama-3.1-8B-Instruct:free", # ✅ Llama 3.1 via HF 
-                "huggingface/mistralai/Mistral-7B-Instruct-v0.3:free", # ✅ Mistral 7B via HF 
-                "huggingface/HuggingFaceH4/zephyr-7b-beta:free",     # ✅ Zephyr 7B via HF 
-                "huggingface/microsoft/Phi-3-mini-4k-instruct:free", # ✅ Phi-3 via HF 
-                "huggingface/Qwen/Qwen2.5-7B-Instruct:free",         # ✅ Qwen 2.5 via HF 
-                "huggingface/deepseek-ai/deepseek-llm-7b-chat:free", # ✅ DeepSeek 7B via HF 
-                
-                # Google models
-                "google/gemma-4-31b-it:free",                        # ✅ Vision + tools 
-                "inclusionai/ling-3.0-tiny:free",                    # ✅ Responsive agents, 262K context 
-            ],
-            index=0
-        )
-
-        st.info("📊 Free tier: ~20 req/min, ~200 req/day. Hugging Face models are accessed via OpenRouter with the `huggingface/` prefix ")
-
         openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
         if not openrouter_key:
-            st.error("❌ OPENROUTER_API_KEY not found in secrets. Please add it.")
+            st.error("❌ OPENROUTER_API_KEY not found in secrets.")
+            models = ["openrouter/free", "nvidia/nemotron-3-ultra-550b-a55b:free", "nvidia/nemotron-3-super-120b-a12b:free"]
         else:
-            st.success("✅ OpenRouter API key found!")
-
-    # ============================================================
-    # OLLAMA CLOUD FREE MODELS
-    # ============================================================
-    else:  # Ollama Cloud
+            with st.spinner("Fetching models..."):
+                fetched_models = fetch_openrouter_models(openrouter_key)
+                if fetched_models:
+                    models = fetched_models
+                    # Ensure openrouter/free is at the top if available
+                    if "openrouter/free" in models:
+                        models.remove("openrouter/free")
+                        models = ["openrouter/free"] + models
+                else:
+                    models = ["openrouter/free", "nvidia/nemotron-3-ultra-550b-a55b:free", "nvidia/nemotron-3-super-120b-a12b:free"]
+        
         model = st.selectbox(
-            "Model (Agentic - Free)",
-            [
-                "nemotron-3-ultra:cloud",                            # ✅ NVIDIA flagship 
-                "nemotron-3-super:cloud",                            # ✅ Level 2 usage, efficient 
-                "deepseek-v4-flash:cloud",                           # ✅ Replaces retired v3 models 
-                "gemma4:31b-cloud",                                  # ✅ Replaces retired gemma3 models 
-                "gpt-oss:120b-cloud",                                # ✅ OpenAI open-source 
-                "glm-5.2:cloud",                                     # ✅ Replaces retired glm-4.7 
-                "minimax-m3:cloud",                                  # ✅ Replaces retired minimax-m2.1 
-                "qwen3.5:397b-cloud",                                # ✅ Replaces retired qwen3-coder:480b 
-                "ministral-3:8b-cloud",                              # ✅ Efficient, Level 1-2 usage 
-                "kimi-k2.6:cloud",                                   # ✅ Replaces retired kimi-k2.5 
-            ],
+            "Model (Free - Auto-updated)",
+            models,
             index=0
         )
+        st.info("📊 Models fetched live from OpenRouter API. Free tier: ~20 req/min, ~200 req/day")
 
-        st.info("📊 All models free. Heavier models consume more quota. Free quota resets every 5 hours ")
-
+    elif provider == "Ollama Cloud":
         ollama_api_key = st.secrets.get("OLLAMA_API_KEY", "")
         if not ollama_api_key:
-            st.error("❌ OLLAMA_API_KEY not found in secrets. Please add it.")
+            st.error("❌ OLLAMA_API_KEY not found in secrets.")
+            models = ["nemotron-3-ultra:cloud", "nemotron-3-super:cloud", "deepseek-v4-flash:cloud"]
         else:
-            st.success("✅ Ollama API key found!")
+            with st.spinner("Fetching models..."):
+                fetched_models = fetch_ollama_cloud_models()
+                if fetched_models:
+                    models = fetched_models
+                else:
+                    models = ["nemotron-3-ultra:cloud", "nemotron-3-super:cloud", "deepseek-v4-flash:cloud", "gemma4:31b-cloud", "gpt-oss:120b-cloud", "glm-5.2:cloud", "minimax-m3:cloud", "qwen3.5:397b-cloud", "ministral-3:8b-cloud", "kimi-k2.6:cloud"]
+        
+        model = st.selectbox(
+            "Model (Free - Auto-updated)",
+            models,
+            index=0
+        )
+        st.info("📊 Models fetched live from Ollama Cloud. Heavier models consume more quota. Free quota resets every 5 hours")
+
+    elif provider == "Groq":
+        groq_api_key = st.secrets.get("GROQ_API_KEY", "")
+        if not groq_api_key:
+            st.error("❌ GROQ_API_KEY not found in secrets.")
+            models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+        else:
+            with st.spinner("Fetching models..."):
+                fetched_models = fetch_groq_models(groq_api_key)
+                if fetched_models:
+                    models = fetched_models
+                else:
+                    models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-4-scout-17b-128e-instruct", "llama-4-maverick-17b-128e-instruct", "mixtral-8x7b-32768", "gemma2-9b-it", "qwen-3-32b", "groq-compound", "groq-compound-mini"]
+        
+        model = st.selectbox(
+            "Model (Free - Auto-updated)",
+            models,
+            index=0
+        )
+        st.info("📊 Groq free tier: Varies by model. Llama 3.1 8B: 14,400 req/day, Llama 3.3 70B: 1,000 req/day")
+
+    else:  # Cerebras
+        cerebras_api_key = st.secrets.get("CEREBRAS_API_KEY", "")
+        if not cerebras_api_key:
+            st.error("❌ CEREBRAS_API_KEY not found in secrets.")
+            models = ["llama-3.3-70b", "qwen-3-235b-a22b", "gpt-oss-120b"]
+        else:
+            with st.spinner("Fetching models..."):
+                fetched_models = fetch_cerebras_models(cerebras_api_key)
+                if fetched_models:
+                    models = fetched_models
+                else:
+                    models = ["llama-3.3-70b", "qwen-3-235b-a22b", "gpt-oss-120b", "qwen-3-32b", "llama-3.1-8b", "zai-glm-4.7", "gemma-4-31b"]
+        
+        model = st.selectbox(
+            "Model (Free - Auto-updated)",
+            models,
+            index=0
+        )
+        st.info("📊 Cerebras free tier: ~30 requests/min with generous token limits")
 
     st.markdown("---")
 
@@ -158,7 +277,7 @@ with st.sidebar:
     new_prompt = st.text_area(
         "Edit the agent's system prompt (JAILBREAK)",
         value=st.session_state.system_prompt,
-        height=200
+        height=150
     )
     if st.button("Update GOD MODE Prompt"):
         st.session_state.system_prompt = new_prompt
@@ -236,6 +355,8 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
     # Get API keys
     openrouter_key = st.secrets.get("OPENROUTER_API_KEY", "")
     ollama_api_key = st.secrets.get("OLLAMA_API_KEY", "")
+    groq_api_key = st.secrets.get("GROQ_API_KEY", "")
+    cerebras_api_key = st.secrets.get("CEREBRAS_API_KEY", "")
 
     # Validate based on provider
     if provider == "OpenRouter" and not openrouter_key:
@@ -243,6 +364,12 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
         st.stop()
     elif provider == "Ollama Cloud" and not ollama_api_key:
         st.error("❌ OLLAMA_API_KEY not found in Streamlit secrets. Please add it.")
+        st.stop()
+    elif provider == "Groq" and not groq_api_key:
+        st.error("❌ GROQ_API_KEY not found in Streamlit secrets. Please add it.")
+        st.stop()
+    elif provider == "Cerebras" and not cerebras_api_key:
+        st.error("❌ CEREBRAS_API_KEY not found in Streamlit secrets. Please add it.")
         st.stop()
 
     # Add user message
@@ -572,7 +699,7 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                         st.session_state.messages.append({"role": "assistant", "content": assistant_message})
                         st.markdown(assistant_message)
 
-                else:  # Ollama Cloud
+                elif provider == "Ollama Cloud":
                     # Initialize Ollama client with cloud endpoint
                     ollama_client = Client(
                         host="https://ollama.com",
@@ -616,11 +743,118 @@ if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"
                             st.error(f"❌ Ollama Cloud Error: {error_msg}")
                         st.stop()
 
-            except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
-                import traceback
-                st.code(traceback.format_exc())
-                if provider == "OpenRouter":
-                    st.info("💡 Try selecting 'openrouter/free' from the model dropdown.")
-                else:
-                    st.info("💡 Try selecting a different model from the dropdown.")
+                elif provider == "Groq":
+                    headers = {
+                        "Authorization": f"Bearer {groq_api_key}",
+                        "Content-Type": "application/json"
+                    }
+
+                    payload = {
+                        "model": model,
+                        "messages": messages,
+                        "max_tokens": 8000,
+                        "temperature": 1.5,
+                        "top_p": 0.95,
+                        "tools": tools,
+                        "tool_choice": "auto"
+                    }
+
+                    if show_debug:
+                        st.expander("🔍 Debug: Groq Request Payload").json(payload)
+
+                    response = requests.post(
+                        url="https://api.groq.com/openai/v1/chat/completions",
+                        headers=headers,
+                        json=payload,
+                        timeout=120
+                    )
+
+                    if response.status_code != 200:
+                        st.error(f"❌ Groq Error {response.status_code}: {response.text[:500]}")
+                        st.info("💡 Try selecting a different model from the dropdown.")
+                        st.stop()
+
+                    result = response.json()
+
+                    if show_debug:
+                        st.expander("🔍 Debug: Groq API Response").json(result)
+
+                    if "choices" not in result or len(result["choices"]) == 0:
+                        st.error("❌ No response from the model.")
+                        st.stop()
+
+                    message = result["choices"][0]["message"]
+                    display_message = ""
+
+                    # Process tool calls - Groq supports tool calling
+                    if "tool_calls" in message and message["tool_calls"]:
+                        display_message += "🔧 Executing tools in GOD MODE...\n\n"
+
+                        tool_messages = []
+
+                        for tool_call in message["tool_calls"]:
+                            tool_name = tool_call["function"]["name"]
+                            tool_call_id = tool_call["id"]
+                            params = json.loads(tool_call["function"]["arguments"])
+
+                            display_message += f"**Tool:** {tool_name}\n"
+                            display_message += f"**Parameters:** {json.dumps(params, indent=2)}\n\n"
+
+                            result_text = execute_tool(tool_name, params)
+                            display_message += f"**Result:**\n```\n{result_text[:1000]}{'...' if len(result_text) > 1000 else ''}\n```\n\n"
+
+                            tool_messages.append({
+                                "role": "tool",
+                                "tool_call_id": tool_call_id,
+                                "name": tool_name,
+                                "content": result_text
+                            })
+
+                        second_messages = messages.copy()
+                        second_messages.append({
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": message["tool_calls"]
+                        })
+
+                        for tool_result in tool_messages:
+                            second_messages.append(tool_result)
+
+                        second_payload = {
+                            "model": model,
+                            "messages": second_messages,
+                            "max_tokens": 8000,
+                            "temperature": 1.5,
+                            "top_p": 0.95
+                        }
+
+                        if show_debug:
+                            st.expander("🔍 Debug: Groq Second Request Payload").json(second_payload)
+
+                        response2 = requests.post(
+                            url="https://api.groq.com/openai/v1/chat/completions",
+                            headers=headers,
+                            json=second_payload,
+                            timeout=120
+                        )
+
+                        if response2.status_code != 200:
+                            st.error(f"❌ Groq Error in second call: {response2.text[:500]}")
+                            st.stop()
+
+                        result2 = response2.json()
+
+                        if show_debug:
+                            st.expander("🔍 Debug: Groq Second API Response").json(result2)
+
+                        if "choices" not in result2 or len(result2["choices"]) == 0:
+                            st.error("❌ No response from the model in the second call.")
+                            st.stop()
+
+                        final_response = result2["choices"][0]["message"]["content"]
+
+                        if check_local_request(prompt):
+                            display_message += "🔒 **Your laptop is SAFE**\n\n"
+
+                        display_message += "**Final Answer:**\n\n" + final_response
+                        st.session_state.messages.append({"role":
