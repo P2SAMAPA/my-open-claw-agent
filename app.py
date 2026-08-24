@@ -63,7 +63,7 @@ AVAILABLE TOOLS:
 """
 
 # ============================================================
-# PRAVAL AGENT TEAM DEFINITIONS
+# PRAVAL AGENT TEAM DEFINITIONS - WITH ACTUAL LLM CALLS
 # ============================================================
 
 # Global queue to capture broadcast messages
@@ -73,6 +73,110 @@ def capture_broadcast(data):
     """Custom broadcast that captures messages in a queue."""
     broadcast_queue.put(data)
     broadcast(data)
+
+# Create a helper function for agent processing
+def call_llm(provider, model, messages, system_prompt=None):
+    """
+    Call an LLM using the specified provider and model.
+    Returns the response text.
+    """
+    # For OpenAI
+    if provider == "openai":
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", "")))
+            
+            # Prepare messages
+            chat_messages = []
+            if system_prompt:
+                chat_messages.append({"role": "system", "content": system_prompt})
+            for msg in messages:
+                chat_messages.append(msg)
+            
+            response = client.chat.completions.create(
+                model=model,
+                messages=chat_messages,
+                temperature=1.0,
+                max_tokens=2000
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"[Error calling OpenAI: {str(e)}]"
+    
+    # For Ollama
+    elif provider == "ollama":
+        try:
+            from ollama import Client
+            client = Client()
+            chat_messages = []
+            if system_prompt:
+                chat_messages.append({"role": "system", "content": system_prompt})
+            for msg in messages:
+                chat_messages.append(msg)
+            
+            response = client.chat(
+                model=model,
+                messages=chat_messages,
+                options={"temperature": 1.0}
+            )
+            return response["message"]["content"]
+        except Exception as e:
+            return f"[Error calling Ollama: {str(e)}]"
+    
+    # For OpenRouter
+    elif provider == "openrouter":
+        try:
+            api_key = st.secrets.get("OPENROUTER_API_KEY", "")
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "max_tokens": 2000,
+                    "temperature": 1.0
+                },
+                timeout=60
+            )
+            if response.status_code == 200:
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            else:
+                return f"[Error: {response.status_code} - {response.text}]"
+        except Exception as e:
+            return f"[Error calling OpenRouter: {str(e)}]"
+    
+    # For Groq
+    elif provider == "groq":
+        try:
+            api_key = st.secrets.get("GROQ_API_KEY", "")
+            response = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "max_tokens": 2000,
+                    "temperature": 1.0
+                },
+                timeout=60
+            )
+            if response.status_code == 200:
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            else:
+                return f"[Error: {response.status_code} - {response.text}]"
+        except Exception as e:
+            return f"[Error calling Groq: {str(e)}]"
+    
+    else:
+        return f"[Provider {provider} not supported]"
 
 # Define agents with PROPER provider and model configuration
 @agent(
@@ -84,7 +188,28 @@ def capture_broadcast(data):
 def researcher(spore):
     """Research agent that gathers information on a topic."""
     topic = spore.knowledge.get("topic", "Unknown topic")
-    finding = f"Research findings for: {topic}. Key insights: 1) The topic is relevant to AI agents, 2) Multiple approaches exist, 3) Future developments are promising."
+    
+    # Get provider and model from spore
+    provider = spore.knowledge.get("provider", "openai")
+    model = spore.knowledge.get("model", "gpt-4o-mini")
+    
+    # Prepare the research prompt
+    research_prompt = f"""
+    Research the following topic thoroughly and provide detailed findings:
+    "{topic}"
+    
+    Provide a comprehensive analysis including:
+    1. Key concepts and definitions
+    2. Current state of the field
+    3. Important considerations or challenges
+    4. Best practices or recommendations
+    
+    Format your response as a well-structured research report.
+    """
+    
+    # Call the LLM
+    messages = [{"role": "user", "content": research_prompt}]
+    finding = call_llm(provider, model, messages, "You are a thorough research assistant.")
     
     capture_broadcast({
         "type": "research_complete",
@@ -103,7 +228,26 @@ def researcher(spore):
 def editor(spore):
     """Editor agent that refines and summarizes research."""
     finding = spore.knowledge.get("finding", "No findings available")
-    summary = f"Editor's review: {finding}\n\nRecommendation: Proceed with implementation of the research findings."
+    provider = spore.knowledge.get("provider", "openai")
+    model = spore.knowledge.get("model", "gpt-4o-mini")
+    
+    # Prepare the editing prompt
+    edit_prompt = f"""
+    Review and summarize the following research findings:
+    
+    {finding}
+    
+    Please provide:
+    1. A concise executive summary (2-3 paragraphs)
+    2. Key takeaways (bullet points)
+    3. A recommendation on how to use this research
+    
+    Make the summary clear, actionable, and well-organized.
+    """
+    
+    # Call the LLM
+    messages = [{"role": "user", "content": edit_prompt}]
+    summary = call_llm(provider, model, messages, "You are an expert editor and summarizer.")
     
     capture_broadcast({
         "type": "summary_complete",
@@ -121,20 +265,29 @@ def editor(spore):
 def coder(spore):
     """Coder agent that generates code based on research."""
     summary = spore.knowledge.get("summary", "No summary available")
-    code_snippet = f'''
-# Code generated based on research
-def implement_research():
+    provider = spore.knowledge.get("provider", "openai")
+    model = spore.knowledge.get("model", "gpt-4o-mini")
+    
+    # Prepare the coding prompt
+    code_prompt = f"""
+    Based on the following research summary:
+    
+    {summary}
+    
+    Generate practical Python code that implements or demonstrates the key concepts from this research.
+    
+    Requirements:
+    - Write clean, well-documented Python code
+    - Include comments explaining what each part does
+    - Provide a simple example usage
+    - The code should be ready to run
+    
+    If the research relates to APIs, include API calls. If it relates to data processing, include data handling.
     """
-    Implementation based on research findings.
-    Generated by Praval multi-agent team.
-    """
-    print("Research summary: {summary[:100]}...")
-    return "Implementation complete"
-
-if __name__ == "__main__":
-    result = implement_research()
-    print(f"Result: {{result}}")
-'''
+    
+    # Call the LLM
+    messages = [{"role": "user", "content": code_prompt}]
+    code_snippet = call_llm(provider, model, messages, "You are a senior software engineer who writes clean, working code.")
     
     capture_broadcast({
         "type": "code_complete",
@@ -165,17 +318,22 @@ def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
     }
     
     try:
-        # Start the team with an initial request
+        # Start the team with an initial request containing the provider and model
         start_agents(
             researcher,
             editor,
             coder,
-            initial_data={"type": "research_request", "topic": topic}
+            initial_data={
+                "type": "research_request",
+                "topic": topic,
+                "provider": provider,
+                "model": model
+            }
         )
         
         # Get Reef and wait for completion with timeout
         reef = get_reef()
-        reef.wait_for_completion(timeout=60)
+        reef.wait_for_completion(timeout=120)
         
         # Collect messages from the queue
         messages = []
@@ -223,7 +381,7 @@ def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
 tab1, tab2 = st.tabs(["🔥 OpenClaw Agent", "🧠 Praval Multi-Agent Team"])
 
 # ============================================================
-# TAB 1: OpenClaw Agent (Existing Functionality - Simplified)
+# TAB 1: OpenClaw Agent
 # ============================================================
 with tab1:
     # Sidebar for OpenClaw configuration
@@ -305,15 +463,15 @@ with tab2:
     with st.expander("ℹ️ How Praval Works", expanded=False):
         st.markdown("""
         **Agent Team Architecture:**
-        - **Researcher Agent**: Gathers information on a topic
-        - **Editor Agent**: Refines and summarizes the research
-        - **Coder Agent**: Generates code based on the research
+        - **Researcher Agent**: Gathers information on a topic using LLM
+        - **Editor Agent**: Refines and summarizes the research using LLM
+        - **Coder Agent**: Generates code based on the research using LLM
         
         **Communication Flow:**
         1. You submit a research topic
-        2. Researcher → Research results
-        3. Editor → Summarized findings
-        4. Coder → Generated code implementation
+        2. Researcher → Research results (via LLM)
+        3. Editor → Summarized findings (via LLM)
+        4. Coder → Generated code implementation (via LLM)
         """)
     
     # Check for API keys
@@ -326,30 +484,42 @@ with tab2:
     with col1:
         praval_topic = st.text_input(
             "📝 Enter a research topic:",
-            value="Building scalable multi-agent systems with Python",
+            value="Best combination of three large cap equity stocks for a FCN with fixed coupon for 12 months tenor with 55% put strike",
             placeholder="e.g., How to implement RAG with local LLMs"
         )
         
         praval_provider = st.selectbox(
             "🧠 Provider:",
-            ["openai", "anthropic", "cohere", "gemini"],
+            ["openai", "ollama", "openrouter", "groq"],
             index=0,
-            help="OpenAI is recommended. Other providers require their respective API keys."
+            help="OpenAI is recommended. Ollama requires local server. OpenRouter/Groq require their API keys."
         )
         
         praval_model = st.text_input(
             "🤖 Model:",
             value="gpt-4o-mini",
-            placeholder="e.g., gpt-4o-mini, claude-3-sonnet"
+            placeholder="e.g., gpt-4o-mini, llama3.2, openrouter/free"
         )
     
     with col2:
         st.markdown("### 🚀 Run Team")
         st.markdown("1️⃣ Researcher → 2️⃣ Editor → 3️⃣ Coder")
         
+        # Check if API key is available for the selected provider
+        api_available = True
+        if praval_provider == "openai" and not st.secrets.get("OPENAI_API_KEY", ""):
+            api_available = False
+            st.error("❌ OPENAI_API_KEY required")
+        elif praval_provider == "openrouter" and not st.secrets.get("OPENROUTER_API_KEY", ""):
+            api_available = False
+            st.error("❌ OPENROUTER_API_KEY required")
+        elif praval_provider == "groq" and not st.secrets.get("GROQ_API_KEY", ""):
+            api_available = False
+            st.error("❌ GROQ_API_KEY required")
+        
         if st.button("▶️ Run Praval Team", type="primary", use_container_width=True):
-            if not openai_key:
-                st.error("❌ OPENAI_API_KEY required. Please add it to Streamlit secrets.")
+            if not api_available:
+                st.error("❌ API key required for selected provider. Please add it to Streamlit secrets.")
             else:
                 with st.spinner("🧠 Agent team is working..."):
                     try:
@@ -383,6 +553,7 @@ with tab2:
             st.warning(f"⚠️ Status: {status}")
         
         st.info(f"**Topic:** {results.get('topic', 'N/A')}")
+        st.info(f"**Provider:** {results.get('provider', 'N/A')} | **Model:** {results.get('model', 'N/A')}")
         
         # Display each agent's output
         if results.get("researcher"):
