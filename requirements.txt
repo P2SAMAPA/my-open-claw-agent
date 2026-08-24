@@ -2,3 +2,4 @@ streamlit
 requests
 ollama
 praval
+openai
