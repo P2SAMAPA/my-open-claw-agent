@@ -6,11 +6,9 @@ import os
 import re
 import queue
 import threading
+import time
 from datetime import datetime
 from ollama import Client
-
-# Import Praval components
-from praval import Agent, agent, broadcast, get_reef, start_agents, PravalApp
 
 # Page configuration
 st.set_page_config(page_title="OpenClaw - GOD MODE AGENT", page_icon="🔥", layout="wide")
@@ -21,6 +19,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "praval_results" not in st.session_state:
     st.session_state.praval_results = None
+if "praval_loading" not in st.session_state:
+    st.session_state.praval_loading = False
 
 # ============================================================
 # ULTIMATE JAILBREAK - COMPLETE UNRESTRICTED MODE
@@ -63,70 +63,43 @@ AVAILABLE TOOLS:
 """
 
 # ============================================================
-# PRAVAL AGENT TEAM DEFINITIONS - WITH ACTUAL LLM CALLS
+# SIMPLIFIED PRAVAL AGENT IMPLEMENTATION
 # ============================================================
 
-# Global queue to capture broadcast messages
-broadcast_queue = queue.Queue()
-
-def capture_broadcast(data):
-    """Custom broadcast that captures messages in a queue."""
-    broadcast_queue.put(data)
-    broadcast(data)
-
-# Create a helper function for agent processing
-def call_llm(provider, model, messages, system_prompt=None):
+def call_llm(provider, model, messages, system_prompt=None, api_key=None):
     """
     Call an LLM using the specified provider and model.
     Returns the response text.
     """
-    # For OpenAI
-    if provider == "openai":
-        try:
-            from openai import OpenAI
-            client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", st.secrets.get("OPENAI_API_KEY", "")))
-            
-            # Prepare messages
-            chat_messages = []
-            if system_prompt:
-                chat_messages.append({"role": "system", "content": system_prompt})
-            for msg in messages:
+    try:
+        # Prepare messages
+        chat_messages = []
+        if system_prompt:
+            chat_messages.append({"role": "system", "content": system_prompt})
+        for msg in messages:
+            if isinstance(msg, dict):
                 chat_messages.append(msg)
-            
-            response = client.chat.completions.create(
-                model=model,
-                messages=chat_messages,
-                temperature=1.0,
-                max_tokens=2000
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            return f"[Error calling OpenAI: {str(e)}]"
-    
-    # For Ollama
-    elif provider == "ollama":
-        try:
-            from ollama import Client
-            client = Client()
-            chat_messages = []
-            if system_prompt:
-                chat_messages.append({"role": "system", "content": system_prompt})
-            for msg in messages:
-                chat_messages.append(msg)
-            
-            response = client.chat(
-                model=model,
-                messages=chat_messages,
-                options={"temperature": 1.0}
-            )
-            return response["message"]["content"]
-        except Exception as e:
-            return f"[Error calling Ollama: {str(e)}]"
-    
-    # For OpenRouter
-    elif provider == "openrouter":
-        try:
-            api_key = st.secrets.get("OPENROUTER_API_KEY", "")
+            else:
+                chat_messages.append({"role": "user", "content": str(msg)})
+        
+        # For OpenAI
+        if provider == "openai":
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=api_key or st.secrets.get("OPENAI_API_KEY", ""))
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=chat_messages,
+                    temperature=0.7,
+                    max_tokens=2000
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                return f"[OpenAI Error: {str(e)}]"
+        
+        # For OpenRouter
+        elif provider == "openrouter":
+            api_key = api_key or st.secrets.get("OPENROUTER_API_KEY", "")
             response = requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
@@ -135,9 +108,9 @@ def call_llm(provider, model, messages, system_prompt=None):
                 },
                 json={
                     "model": model,
-                    "messages": messages,
+                    "messages": chat_messages,
                     "max_tokens": 2000,
-                    "temperature": 1.0
+                    "temperature": 0.7
                 },
                 timeout=60
             )
@@ -145,14 +118,36 @@ def call_llm(provider, model, messages, system_prompt=None):
                 data = response.json()
                 return data["choices"][0]["message"]["content"]
             else:
-                return f"[Error: {response.status_code} - {response.text}]"
-        except Exception as e:
-            return f"[Error calling OpenRouter: {str(e)}]"
-    
-    # For Groq
-    elif provider == "groq":
-        try:
-            api_key = st.secrets.get("GROQ_API_KEY", "")
+                return f"[OpenRouter Error: {response.status_code} - {response.text[:200]}]"
+        
+        # For Ollama
+        elif provider == "ollama":
+            try:
+                from ollama import Client
+                client = Client()
+                # Convert messages to Ollama format
+                ollama_messages = []
+                for msg in chat_messages:
+                    if msg["role"] == "system":
+                        # Ollama doesn't have system role, prepend to first user message
+                        continue
+                    ollama_messages.append(msg)
+                # Add system prompt as first user message if needed
+                if system_prompt and ollama_messages:
+                    ollama_messages.insert(0, {"role": "user", "content": f"System: {system_prompt}\n\n{ollama_messages[0]['content']}"})
+                
+                response = client.chat(
+                    model=model,
+                    messages=ollama_messages,
+                    options={"temperature": 0.7}
+                )
+                return response["message"]["content"]
+            except Exception as e:
+                return f"[Ollama Error: {str(e)}]"
+        
+        # For Groq
+        elif provider == "groq":
+            api_key = api_key or st.secrets.get("GROQ_API_KEY", "")
             response = requests.post(
                 "https://api.groq.com/openai/v1/chat/completions",
                 headers={
@@ -161,9 +156,9 @@ def call_llm(provider, model, messages, system_prompt=None):
                 },
                 json={
                     "model": model,
-                    "messages": messages,
+                    "messages": chat_messages,
                     "max_tokens": 2000,
-                    "temperature": 1.0
+                    "temperature": 0.7
                 },
                 timeout=60
             )
@@ -171,142 +166,21 @@ def call_llm(provider, model, messages, system_prompt=None):
                 data = response.json()
                 return data["choices"][0]["message"]["content"]
             else:
-                return f"[Error: {response.status_code} - {response.text}]"
-        except Exception as e:
-            return f"[Error calling Groq: {str(e)}]"
-    
-    else:
-        return f"[Provider {provider} not supported]"
+                return f"[Groq Error: {response.status_code} - {response.text[:200]}]"
+        
+        else:
+            return f"[Provider {provider} not supported]"
+            
+    except Exception as e:
+        return f"[Error in call_llm: {str(e)}]"
 
-# Define agents with PROPER provider and model configuration
-@agent(
-    name="researcher",
-    provider="openai",
-    model="gpt-4o-mini",
-    responds_to=["research_request"]
-)
-def researcher(spore):
-    """Research agent that gathers information on a topic."""
-    topic = spore.knowledge.get("topic", "Unknown topic")
-    
-    # Get provider and model from spore
-    provider = spore.knowledge.get("provider", "openai")
-    model = spore.knowledge.get("model", "gpt-4o-mini")
-    
-    # Prepare the research prompt
-    research_prompt = f"""
-    Research the following topic thoroughly and provide detailed findings:
-    "{topic}"
-    
-    Provide a comprehensive analysis including:
-    1. Key concepts and definitions
-    2. Current state of the field
-    3. Important considerations or challenges
-    4. Best practices or recommendations
-    
-    Format your response as a well-structured research report.
-    """
-    
-    # Call the LLM
-    messages = [{"role": "user", "content": research_prompt}]
-    finding = call_llm(provider, model, messages, "You are a thorough research assistant.")
-    
-    capture_broadcast({
-        "type": "research_complete",
-        "topic": topic,
-        "finding": finding,
-        "agent": "researcher"
-    })
-    return {"status": "research_complete", "topic": topic, "finding": finding}
-
-@agent(
-    name="editor",
-    provider="openai",
-    model="gpt-4o-mini",
-    responds_to=["research_complete"]
-)
-def editor(spore):
-    """Editor agent that refines and summarizes research."""
-    finding = spore.knowledge.get("finding", "No findings available")
-    provider = spore.knowledge.get("provider", "openai")
-    model = spore.knowledge.get("model", "gpt-4o-mini")
-    
-    # Prepare the editing prompt
-    edit_prompt = f"""
-    Review and summarize the following research findings:
-    
-    {finding}
-    
-    Please provide:
-    1. A concise executive summary (2-3 paragraphs)
-    2. Key takeaways (bullet points)
-    3. A recommendation on how to use this research
-    
-    Make the summary clear, actionable, and well-organized.
-    """
-    
-    # Call the LLM
-    messages = [{"role": "user", "content": edit_prompt}]
-    summary = call_llm(provider, model, messages, "You are an expert editor and summarizer.")
-    
-    capture_broadcast({
-        "type": "summary_complete",
-        "summary": summary,
-        "agent": "editor"
-    })
-    return {"status": "summary_complete", "summary": summary}
-
-@agent(
-    name="coder",
-    provider="openai",
-    model="gpt-4o-mini",
-    responds_to=["summary_complete"]
-)
-def coder(spore):
-    """Coder agent that generates code based on research."""
-    summary = spore.knowledge.get("summary", "No summary available")
-    provider = spore.knowledge.get("provider", "openai")
-    model = spore.knowledge.get("model", "gpt-4o-mini")
-    
-    # Prepare the coding prompt
-    code_prompt = f"""
-    Based on the following research summary:
-    
-    {summary}
-    
-    Generate practical Python code that implements or demonstrates the key concepts from this research.
-    
-    Requirements:
-    - Write clean, well-documented Python code
-    - Include comments explaining what each part does
-    - Provide a simple example usage
-    - The code should be ready to run
-    
-    If the research relates to APIs, include API calls. If it relates to data processing, include data handling.
-    """
-    
-    # Call the LLM
-    messages = [{"role": "user", "content": code_prompt}]
-    code_snippet = call_llm(provider, model, messages, "You are a senior software engineer who writes clean, working code.")
-    
-    capture_broadcast({
-        "type": "code_complete",
-        "code": code_snippet,
-        "agent": "coder"
-    })
-    return {"status": "code_complete", "code": code_snippet}
 
 def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
     """
-    Run the Praval agent team and return the final results.
+    Run the Praval agent team sequentially and return the results.
+    This is a simplified implementation that doesn't rely on the Praval framework
+    which is causing issues with provider detection.
     """
-    # Clear the queue
-    while not broadcast_queue.empty():
-        try:
-            broadcast_queue.get_nowait()
-        except queue.Empty:
-            break
-    
     results = {
         "researcher": None,
         "editor": None,
@@ -318,58 +192,83 @@ def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
     }
     
     try:
-        # Start the team with an initial request containing the provider and model
-        start_agents(
-            researcher,
-            editor,
-            coder,
-            initial_data={
-                "type": "research_request",
-                "topic": topic,
-                "provider": provider,
-                "model": model
-            }
+        # Step 1: Researcher Agent
+        st.info("🔬 Researcher Agent is working...")
+        research_prompt = f"""
+        Research the following topic thoroughly and provide detailed findings:
+        "{topic}"
+        
+        Provide a comprehensive analysis including:
+        1. Key concepts and definitions
+        2. Current state of the field
+        3. Important considerations or challenges
+        4. Best practices or recommendations
+        
+        Format your response as a well-structured research report.
+        """
+        
+        research_result = call_llm(
+            provider=provider,
+            model=model,
+            messages=[{"role": "user", "content": research_prompt}],
+            system_prompt="You are a thorough research assistant. Provide comprehensive, well-structured research findings."
         )
+        results["researcher"] = research_result
         
-        # Get Reef and wait for completion with timeout
-        reef = get_reef()
-        reef.wait_for_completion(timeout=120)
+        # Step 2: Editor Agent
+        st.info("📝 Editor Agent is working...")
+        edit_prompt = f"""
+        Review and summarize the following research findings:
         
-        # Collect messages from the queue
-        messages = []
-        while not broadcast_queue.empty():
-            try:
-                msg = broadcast_queue.get_nowait()
-                messages.append(msg)
-                
-                if msg.get("agent") == "researcher":
-                    results["researcher"] = msg.get("finding", "No finding")
-                elif msg.get("agent") == "editor":
-                    results["editor"] = msg.get("summary", "No summary")
-                elif msg.get("agent") == "coder":
-                    results["coder"] = msg.get("code", "No code generated")
-            except queue.Empty:
-                break
+        {research_result}
         
-        # Fallback if agents didn't send structured messages
-        if results["researcher"] is None:
-            for msg in messages:
-                if msg.get("type") == "research_complete":
-                    results["researcher"] = msg.get("finding", "Research completed")
-                elif msg.get("type") == "summary_complete":
-                    results["editor"] = msg.get("summary", "Summary completed")
-                elif msg.get("type") == "code_complete":
-                    results["coder"] = msg.get("code", "Code generated")
+        Please provide:
+        1. A concise executive summary (2-3 paragraphs)
+        2. Key takeaways (bullet points)
+        3. A recommendation on how to use this research
+        
+        Make the summary clear, actionable, and well-organized.
+        """
+        
+        editor_result = call_llm(
+            provider=provider,
+            model=model,
+            messages=[{"role": "user", "content": edit_prompt}],
+            system_prompt="You are an expert editor and summarizer. Create clear, actionable summaries."
+        )
+        results["editor"] = editor_result
+        
+        # Step 3: Coder Agent
+        st.info("💻 Coder Agent is working...")
+        code_prompt = f"""
+        Based on the following research summary:
+        
+        {editor_result}
+        
+        Generate practical Python code that implements or demonstrates the key concepts from this research.
+        
+        Requirements:
+        - Write clean, well-documented Python code
+        - Include comments explaining what each part does
+        - Provide a simple example usage
+        - The code should be ready to run
+        
+        If the research relates to APIs, include API calls. If it relates to data processing, include data handling.
+        """
+        
+        coder_result = call_llm(
+            provider=provider,
+            model=model,
+            messages=[{"role": "user", "content": code_prompt}],
+            system_prompt="You are a senior software engineer who writes clean, working code with proper documentation."
+        )
+        results["coder"] = coder_result
         
         results["status"] = "completed"
-        results["messages"] = messages
-        
-        reef.shutdown()
         
     except Exception as e:
         results["status"] = "error"
         results["error"] = str(e)
-        st.error(f"❌ Praval error: {str(e)}")
     
     return results
 
@@ -456,16 +355,18 @@ with tab1:
 with tab2:
     st.header("🧠 Praval Multi-Agent Team")
     st.markdown("""
-    This tab uses **Praval**, a multi-agent framework that lets you create teams of specialist agents.
-    Each agent collaborates through Reef (the delivery layer) using Spores (structured messages).
+    This tab uses a **simplified multi-agent implementation** that runs agents sequentially:
+    1️⃣ **Researcher** - Gathers comprehensive information on your topic
+    2️⃣ **Editor** - Refines and summarizes the research  
+    3️⃣ **Coder** - Generates practical code based on the research
     """)
     
-    with st.expander("ℹ️ How Praval Works", expanded=False):
+    with st.expander("ℹ️ How It Works", expanded=False):
         st.markdown("""
         **Agent Team Architecture:**
-        - **Researcher Agent**: Gathers information on a topic using LLM
-        - **Editor Agent**: Refines and summarizes the research using LLM
-        - **Coder Agent**: Generates code based on the research using LLM
+        - **Researcher Agent**: Uses LLM to research the topic in depth
+        - **Editor Agent**: Uses LLM to summarize and extract key insights
+        - **Coder Agent**: Uses LLM to generate working Python code
         
         **Communication Flow:**
         1. You submit a research topic
@@ -475,10 +376,6 @@ with tab2:
         """)
     
     # Check for API keys
-    openai_key = st.secrets.get("OPENAI_API_KEY", "")
-    if not openai_key:
-        st.warning("⚠️ OPENAI_API_KEY not found. Praval uses OpenAI by default. Please add it to secrets.")
-    
     col1, col2 = st.columns([2, 1])
     
     with col1:
@@ -490,14 +387,14 @@ with tab2:
         
         praval_provider = st.selectbox(
             "🧠 Provider:",
-            ["openai", "ollama", "openrouter", "groq"],
+            ["openai", "openrouter", "groq", "ollama"],
             index=0,
             help="OpenAI is recommended. Ollama requires local server. OpenRouter/Groq require their API keys."
         )
         
         praval_model = st.text_input(
             "🤖 Model:",
-            value="gpt-4o-mini",
+            value="gpt-4o-mini" if praval_provider == "openai" else "openrouter/free" if praval_provider == "openrouter" else "llama-3.3-70b-versatile" if praval_provider == "groq" else "llama3.2",
             placeholder="e.g., gpt-4o-mini, llama3.2, openrouter/free"
         )
     
@@ -507,39 +404,56 @@ with tab2:
         
         # Check if API key is available for the selected provider
         api_available = True
-        if praval_provider == "openai" and not st.secrets.get("OPENAI_API_KEY", ""):
-            api_available = False
-            st.error("❌ OPENAI_API_KEY required")
-        elif praval_provider == "openrouter" and not st.secrets.get("OPENROUTER_API_KEY", ""):
-            api_available = False
-            st.error("❌ OPENROUTER_API_KEY required")
-        elif praval_provider == "groq" and not st.secrets.get("GROQ_API_KEY", ""):
-            api_available = False
-            st.error("❌ GROQ_API_KEY required")
+        api_warning = None
+        
+        if praval_provider == "openai":
+            api_key = st.secrets.get("OPENAI_API_KEY", "")
+            if not api_key:
+                api_available = False
+                api_warning = "❌ OPENAI_API_KEY required"
+        elif praval_provider == "openrouter":
+            api_key = st.secrets.get("OPENROUTER_API_KEY", "")
+            if not api_key:
+                api_available = False
+                api_warning = "❌ OPENROUTER_API_KEY required"
+        elif praval_provider == "groq":
+            api_key = st.secrets.get("GROQ_API_KEY", "")
+            if not api_key:
+                api_available = False
+                api_warning = "❌ GROQ_API_KEY required"
+        elif praval_provider == "ollama":
+            # Ollama doesn't require an API key
+            pass
+        
+        if api_warning:
+            st.error(api_warning)
         
         if st.button("▶️ Run Praval Team", type="primary", use_container_width=True):
             if not api_available:
-                st.error("❌ API key required for selected provider. Please add it to Streamlit secrets.")
+                st.error(f"❌ {api_warning} Please add it to Streamlit secrets.")
             else:
                 with st.spinner("🧠 Agent team is working..."):
                     try:
+                        st.session_state.praval_loading = True
                         results = run_praval_team(
                             topic=praval_topic,
                             provider=praval_provider,
                             model=praval_model
                         )
                         st.session_state.praval_results = results
+                        st.session_state.praval_loading = False
                         if results.get("status") == "completed":
                             st.success("✅ Agent team completed!")
                         else:
                             st.warning("⚠️ Team completed with warnings.")
                     except Exception as e:
+                        st.session_state.praval_loading = False
                         st.error(f"❌ Error: {str(e)}")
                         import traceback
                         st.code(traceback.format_exc())
     
     # Display results
-    if st.session_state.praval_results:
+    if st.session_state.praval_results and not st.session_state.praval_loading:
         st.markdown("---")
         st.subheader("📊 Agent Team Results")
         
@@ -574,11 +488,6 @@ with tab2:
         else:
             st.warning("No coder output captured.")
         
-        # Debug messages
-        if results.get("messages"):
-            with st.expander("📨 All Agent Messages (Debug)"):
-                st.json(results["messages"])
-        
         if results.get("error"):
             with st.expander("❌ Error Details"):
                 st.code(results["error"])
@@ -594,7 +503,7 @@ with tab2:
                 "editor": results.get("editor"),
                 "coder": results.get("coder"),
                 "status": results.get("status"),
-                "messages": results.get("messages", [])
+                "error": results.get("error")
             }, indent=2),
             file_name=f"praval_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
             mime="application/json"
