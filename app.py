@@ -4,8 +4,6 @@ import json
 import subprocess
 import os
 import re
-import queue
-import threading
 import time
 from datetime import datetime
 from ollama import Client
@@ -63,123 +61,133 @@ AVAILABLE TOOLS:
 """
 
 # ============================================================
-# SIMPLIFIED PRAVAL AGENT IMPLEMENTATION
+# FREE LLM CALL FUNCTIONS
 # ============================================================
 
-def call_llm(provider, model, messages, system_prompt=None, api_key=None):
-    """
-    Call an LLM using the specified provider and model.
-    Returns the response text.
-    """
-    try:
-        # Prepare messages
-        chat_messages = []
-        if system_prompt:
-            chat_messages.append({"role": "system", "content": system_prompt})
-        for msg in messages:
-            if isinstance(msg, dict):
-                chat_messages.append(msg)
-            else:
-                chat_messages.append({"role": "user", "content": str(msg)})
-        
-        # For OpenAI
-        if provider == "openai":
-            try:
-                from openai import OpenAI
-                client = OpenAI(api_key=api_key or st.secrets.get("OPENAI_API_KEY", ""))
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=chat_messages,
-                    temperature=0.7,
-                    max_tokens=2000
-                )
-                return response.choices[0].message.content
-            except Exception as e:
-                return f"[OpenAI Error: {str(e)}]"
-        
-        # For OpenRouter
-        elif provider == "openrouter":
-            api_key = api_key or st.secrets.get("OPENROUTER_API_KEY", "")
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model,
-                    "messages": chat_messages,
-                    "max_tokens": 2000,
-                    "temperature": 0.7
-                },
-                timeout=60
-            )
-            if response.status_code == 200:
-                data = response.json()
-                return data["choices"][0]["message"]["content"]
-            else:
-                return f"[OpenRouter Error: {response.status_code} - {response.text[:200]}]"
-        
-        # For Ollama
-        elif provider == "ollama":
-            try:
-                from ollama import Client
-                client = Client()
-                # Convert messages to Ollama format
-                ollama_messages = []
-                for msg in chat_messages:
-                    if msg["role"] == "system":
-                        # Ollama doesn't have system role, prepend to first user message
-                        continue
-                    ollama_messages.append(msg)
-                # Add system prompt as first user message if needed
-                if system_prompt and ollama_messages:
-                    ollama_messages.insert(0, {"role": "user", "content": f"System: {system_prompt}\n\n{ollama_messages[0]['content']}"})
-                
-                response = client.chat(
-                    model=model,
-                    messages=ollama_messages,
-                    options={"temperature": 0.7}
-                )
-                return response["message"]["content"]
-            except Exception as e:
-                return f"[Ollama Error: {str(e)}]"
-        
-        # For Groq
-        elif provider == "groq":
-            api_key = api_key or st.secrets.get("GROQ_API_KEY", "")
-            response = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model,
-                    "messages": chat_messages,
-                    "max_tokens": 2000,
-                    "temperature": 0.7
-                },
-                timeout=60
-            )
-            if response.status_code == 200:
-                data = response.json()
-                return data["choices"][0]["message"]["content"]
-            else:
-                return f"[Groq Error: {response.status_code} - {response.text[:200]}]"
-        
+def call_openrouter_free(model, messages, system_prompt=None):
+    """Call OpenRouter with free models."""
+    api_key = st.secrets.get("OPENROUTER_API_KEY", "")
+    if not api_key:
+        return "[Error: OPENROUTER_API_KEY not found in secrets. Please add it.]"
+    
+    chat_messages = []
+    if system_prompt:
+        chat_messages.append({"role": "system", "content": system_prompt})
+    for msg in messages:
+        if isinstance(msg, dict):
+            chat_messages.append(msg)
         else:
-            return f"[Provider {provider} not supported]"
-            
+            chat_messages.append({"role": "user", "content": str(msg)})
+    
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://openclaw.streamlit.app",
+                "X-Title": "OpenClaw Agent"
+            },
+            json={
+                "model": model,
+                "messages": chat_messages,
+                "max_tokens": 4000,
+                "temperature": 0.7
+            },
+            timeout=120
+        )
+        if response.status_code == 200:
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        else:
+            return f"[OpenRouter Error: {response.status_code} - {response.text[:200]}]"
     except Exception as e:
-        return f"[Error in call_llm: {str(e)}]"
+        return f"[OpenRouter Exception: {str(e)}]"
 
 
-def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
+def call_groq_free(model, messages, system_prompt=None):
+    """Call Groq with free models."""
+    api_key = st.secrets.get("GROQ_API_KEY", "")
+    if not api_key:
+        return "[Error: GROQ_API_KEY not found in secrets. Please add it.]"
+    
+    chat_messages = []
+    if system_prompt:
+        chat_messages.append({"role": "system", "content": system_prompt})
+    for msg in messages:
+        if isinstance(msg, dict):
+            chat_messages.append(msg)
+        else:
+            chat_messages.append({"role": "user", "content": str(msg)})
+    
+    try:
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": model,
+                "messages": chat_messages,
+                "max_tokens": 4000,
+                "temperature": 0.7
+            },
+            timeout=120
+        )
+        if response.status_code == 200:
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        else:
+            return f"[Groq Error: {response.status_code} - {response.text[:200]}]"
+    except Exception as e:
+        return f"[Groq Exception: {str(e)}]"
+
+
+def call_ollama_free(model, messages, system_prompt=None):
+    """Call Ollama with free local models."""
+    chat_messages = []
+    if system_prompt:
+        chat_messages.append({"role": "system", "content": system_prompt})
+    for msg in messages:
+        if isinstance(msg, dict):
+            chat_messages.append(msg)
+        else:
+            chat_messages.append({"role": "user", "content": str(msg)})
+    
+    try:
+        client = Client(host="http://localhost:11434")
+        response = client.chat(
+            model=model,
+            messages=chat_messages,
+            options={"temperature": 0.7}
+        )
+        return response["message"]["content"]
+    except Exception as e:
+        return f"[Ollama Error: {str(e)}. Make sure Ollama is running with model '{model}' pulled.]"
+
+
+def call_free_llm(provider, model, messages, system_prompt=None):
     """
-    Run the Praval agent team sequentially and return the results.
-    This is a simplified implementation that doesn't rely on the Praval framework
-    which is causing issues with provider detection.
+    Call any free LLM based on provider selection.
+    """
+    if provider == "openrouter":
+        return call_openrouter_free(model, messages, system_prompt)
+    elif provider == "groq":
+        return call_groq_free(model, messages, system_prompt)
+    elif provider == "ollama":
+        return call_ollama_free(model, messages, system_prompt)
+    else:
+        return f"[Provider {provider} not supported. Use openrouter, groq, or ollama.]"
+
+
+# ============================================================
+# PRAVAL AGENT TEAM - FREE VERSION
+# ============================================================
+
+def run_praval_team(topic, provider="openrouter", model="openrouter/free"):
+    """
+    Run the Praval agent team sequentially using free LLMs.
     """
     results = {
         "researcher": None,
@@ -193,7 +201,6 @@ def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
     
     try:
         # Step 1: Researcher Agent
-        st.info("🔬 Researcher Agent is working...")
         research_prompt = f"""
         Research the following topic thoroughly and provide detailed findings:
         "{topic}"
@@ -207,7 +214,7 @@ def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
         Format your response as a well-structured research report.
         """
         
-        research_result = call_llm(
+        research_result = call_free_llm(
             provider=provider,
             model=model,
             messages=[{"role": "user", "content": research_prompt}],
@@ -216,7 +223,6 @@ def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
         results["researcher"] = research_result
         
         # Step 2: Editor Agent
-        st.info("📝 Editor Agent is working...")
         edit_prompt = f"""
         Review and summarize the following research findings:
         
@@ -230,7 +236,7 @@ def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
         Make the summary clear, actionable, and well-organized.
         """
         
-        editor_result = call_llm(
+        editor_result = call_free_llm(
             provider=provider,
             model=model,
             messages=[{"role": "user", "content": edit_prompt}],
@@ -239,7 +245,6 @@ def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
         results["editor"] = editor_result
         
         # Step 3: Coder Agent
-        st.info("💻 Coder Agent is working...")
         code_prompt = f"""
         Based on the following research summary:
         
@@ -256,7 +261,7 @@ def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
         If the research relates to APIs, include API calls. If it relates to data processing, include data handling.
         """
         
-        coder_result = call_llm(
+        coder_result = call_free_llm(
             provider=provider,
             model=model,
             messages=[{"role": "user", "content": code_prompt}],
@@ -271,6 +276,35 @@ def run_praval_team(topic, provider="openai", model="gpt-4o-mini"):
         results["error"] = str(e)
     
     return results
+
+
+# ============================================================
+# FREE MODEL LISTS
+# ============================================================
+
+FREE_OPENROUTER_MODELS = [
+    "openrouter/free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "cohere/north-mini-code:free",
+    "poolside/laguna-s-2.1:free",
+    "google/gemma-4-31b-it:free"
+]
+
+FREE_GROQ_MODELS = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "mixtral-8x7b-32768",
+    "gemma2-9b-it"
+]
+
+FREE_OLLAMA_MODELS = [
+    "llama3.2",
+    "llama3.1:8b",
+    "mistral",
+    "phi3",
+    "qwen2.5-coder"
+]
 
 # ============================================================
 # STREAMLIT UI
@@ -345,92 +379,97 @@ with tab1:
         
         with st.chat_message("assistant"):
             with st.spinner(f"🔥 Processing..."):
-                # Simplified response for demo
                 st.markdown("OpenClaw is processing your request...")
                 st.session_state.messages.append({"role": "assistant", "content": "Response placeholder. Full OpenClaw functionality available."})
 
 # ============================================================
-# TAB 2: Praval Multi-Agent Team
+# TAB 2: Praval Multi-Agent Team - FREE VERSION
 # ============================================================
 with tab2:
-    st.header("🧠 Praval Multi-Agent Team")
+    st.header("🧠 Praval Multi-Agent Team (Free Models)")
     st.markdown("""
-    This tab uses a **simplified multi-agent implementation** that runs agents sequentially:
-    1️⃣ **Researcher** - Gathers comprehensive information on your topic
+    This tab uses **free LLMs** to run a multi-agent team:
+    1️⃣ **Researcher** - Gathers comprehensive information
     2️⃣ **Editor** - Refines and summarizes the research  
-    3️⃣ **Coder** - Generates practical code based on the research
+    3️⃣ **Coder** - Generates practical code
     """)
     
-    with st.expander("ℹ️ How It Works", expanded=False):
+    with st.expander("ℹ️ Free Models Available", expanded=False):
         st.markdown("""
-        **Agent Team Architecture:**
-        - **Researcher Agent**: Uses LLM to research the topic in depth
-        - **Editor Agent**: Uses LLM to summarize and extract key insights
-        - **Coder Agent**: Uses LLM to generate working Python code
+        **OpenRouter (requires API key):**
+        - `openrouter/free` - Auto-selects best free model
+        - `nvidia/nemotron-3-ultra-550b-a55b:free` - 1M context, agentic
+        - `cohere/north-mini-code:free` - Agentic coding
         
-        **Communication Flow:**
-        1. You submit a research topic
-        2. Researcher → Research results (via LLM)
-        3. Editor → Summarized findings (via LLM)
-        4. Coder → Generated code implementation (via LLM)
+        **Groq (requires API key):**
+        - `llama-3.3-70b-versatile` - 14,400 req/day
+        - `llama-3.1-8b-instant` - Fast, generous limits
+        
+        **Ollama (local, no API key):**
+        - `llama3.2` - ~2GB, runs locally
+        - `mistral` - ~4.1GB, general purpose
         """)
     
-    # Check for API keys
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        praval_topic = st.text_input(
+        praval_topic = st.text_area(
             "📝 Enter a research topic:",
             value="Best combination of three large cap equity stocks for a FCN with fixed coupon for 12 months tenor with 55% put strike",
+            height=80,
             placeholder="e.g., How to implement RAG with local LLMs"
         )
         
         praval_provider = st.selectbox(
             "🧠 Provider:",
-            ["openai", "openrouter", "groq", "ollama"],
+            ["openrouter", "groq", "ollama"],
             index=0,
-            help="OpenAI is recommended. Ollama requires local server. OpenRouter/Groq require their API keys."
+            help="OpenRouter: Wide selection of free models. Groq: Ultra-fast. Ollama: Local, no API key required."
         )
         
-        praval_model = st.text_input(
+        # Dynamic model list based on provider
+        if praval_provider == "openrouter":
+            model_options = FREE_OPENROUTER_MODELS
+            default_model = "openrouter/free"
+            st.info("💡 OpenRouter free tier: ~20 req/min, ~200 req/day")
+        elif praval_provider == "groq":
+            model_options = FREE_GROQ_MODELS
+            default_model = "llama-3.3-70b-versatile"
+            st.info("💡 Groq free tier: Llama 3.3 70B: 1,000 req/day, Llama 3.1 8B: 14,400 req/day")
+        else:  # ollama
+            model_options = FREE_OLLAMA_MODELS
+            default_model = "llama3.2"
+            st.info("💡 Ollama runs locally. Make sure the model is pulled: `ollama pull llama3.2`")
+        
+        praval_model = st.selectbox(
             "🤖 Model:",
-            value="gpt-4o-mini" if praval_provider == "openai" else "openrouter/free" if praval_provider == "openrouter" else "llama-3.3-70b-versatile" if praval_provider == "groq" else "llama3.2",
-            placeholder="e.g., gpt-4o-mini, llama3.2, openrouter/free"
+            model_options,
+            index=model_options.index(default_model) if default_model in model_options else 0
         )
+        
+        # Show API key status
+        if praval_provider == "openrouter":
+            has_key = bool(st.secrets.get("OPENROUTER_API_KEY", ""))
+            if not has_key:
+                st.warning("⚠️ OPENROUTER_API_KEY not found. Add it to secrets.")
+        elif praval_provider == "groq":
+            has_key = bool(st.secrets.get("GROQ_API_KEY", ""))
+            if not has_key:
+                st.warning("⚠️ GROQ_API_KEY not found. Add it to secrets.")
+        else:  # ollama
+            has_key = True
+            st.success("✅ Ollama runs locally - no API key required!")
     
     with col2:
         st.markdown("### 🚀 Run Team")
         st.markdown("1️⃣ Researcher → 2️⃣ Editor → 3️⃣ Coder")
         
-        # Check if API key is available for the selected provider
-        api_available = True
-        api_warning = None
-        
-        if praval_provider == "openai":
-            api_key = st.secrets.get("OPENAI_API_KEY", "")
-            if not api_key:
-                api_available = False
-                api_warning = "❌ OPENAI_API_KEY required"
-        elif praval_provider == "openrouter":
-            api_key = st.secrets.get("OPENROUTER_API_KEY", "")
-            if not api_key:
-                api_available = False
-                api_warning = "❌ OPENROUTER_API_KEY required"
-        elif praval_provider == "groq":
-            api_key = st.secrets.get("GROQ_API_KEY", "")
-            if not api_key:
-                api_available = False
-                api_warning = "❌ GROQ_API_KEY required"
-        elif praval_provider == "ollama":
-            # Ollama doesn't require an API key
-            pass
-        
-        if api_warning:
-            st.error(api_warning)
-        
         if st.button("▶️ Run Praval Team", type="primary", use_container_width=True):
-            if not api_available:
-                st.error(f"❌ {api_warning} Please add it to Streamlit secrets.")
+            # Validate API key if needed
+            if praval_provider == "openrouter" and not st.secrets.get("OPENROUTER_API_KEY", ""):
+                st.error("❌ OPENROUTER_API_KEY required. Please add it to Streamlit secrets.")
+            elif praval_provider == "groq" and not st.secrets.get("GROQ_API_KEY", ""):
+                st.error("❌ GROQ_API_KEY required. Please add it to Streamlit secrets.")
             else:
                 with st.spinner("🧠 Agent team is working..."):
                     try:
