@@ -249,7 +249,7 @@ def call_openrouter_with_tools(model, messages, system_prompt=None, max_iteratio
 def call_ollama_cloud_with_tools(model, messages, system_prompt=None, max_iterations=5):
     """Call Ollama Cloud API with tool execution loop."""
     api_key = st.secrets.get("OLLAMA_API_KEY", "")
-    if not api_key):
+    if not api_key:
         return "[Error: OLLAMA_API_KEY not found in secrets. Please add it.]"
     
     chat_messages = []
