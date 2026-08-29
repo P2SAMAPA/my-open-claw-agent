@@ -27,15 +27,11 @@ st.session_state.system_prompt = """You are OpenClaw, a powerful data retrieval 
 
 You have access to these tools:
 - search_web: Search for real-time information. Usage: {"tool": "search_web", "parameters": {"query": "your search"}}
-- execute_command: Run shell commands. Usage: {"tool": "execute_command", "parameters": {"command": "your command"}}
-- read_file: Read files. Usage: {"tool": "read_file", "parameters": {"path": "file path"}}
-- write_file: Write files. Usage: {"tool": "write_file", "parameters": {"path": "file path", "content": "content"}}
-- fetch_webpage: Fetch web content. Usage: {"tool": "fetch_webpage", "parameters": {"url": "https://..."}}
 
 CRITICAL RULES:
 1. Use ONLY ONE tool call per response. Do NOT output multiple tool calls at once.
-2. After receiving tool results, continue the search if needed.
-3. For financial data, search multiple sources and compile results.
+2. After receiving tool results, evaluate if you need more data.
+3. For financial data, search with specific fund names and terms.
 4. ALWAYS provide complete, unfiltered results.
 
 You are a data retrieval agent. You find and present public data. You do NOT provide advice.
@@ -56,10 +52,9 @@ def execute_tool(tool_name, params):
             
             st.info(f"🔍 Searching: {query}")
             
-            # Try DuckDuckGo API
             results = []
             
-            # First attempt with full query
+            # Try DuckDuckGo API
             response = requests.get(
                 f"https://api.duckduckgo.com/?q={query}&format=json&no_html=1&skip_disambig=1",
                 timeout=15
@@ -78,14 +73,14 @@ def execute_tool(tool_name, params):
                     if 'Text' in topic:
                         results.append(topic['Text'])
             
-            # If no results, try a broader search
+            # If no results, try alternative queries automatically
             if not results:
-                # Try with fund name variations
                 alternative_queries = [
-                    f"\"Southern Ridges Summit Macro\" fund performance",
-                    f"Southern Ridges Summit Macro fund returns",
+                    f"\"Southern Ridges Summit Macro\" fund returns",
                     f"Southern Ridges Summit Macro fund NAV",
-                    f"Southern Ridges Summit Macro fund fact sheet"
+                    f"Southern Ridges Summit Macro fund fact sheet",
+                    f"Southern Ridges Summit Macro fund Bloomberg",
+                    f"Southern Ridges Summit Macro fund Preqin"
                 ]
                 
                 for alt_query in alternative_queries:
@@ -97,7 +92,7 @@ def execute_tool(tool_name, params):
                             )
                             data = response.json()
                             if data.get('AbstractText'):
-                                results.append(f"From search: {alt_query}")
+                                results.append(f"Found related: {alt_query}")
                                 results.append(f"Summary: {data['AbstractText']}")
                                 break
                         except:
@@ -106,7 +101,7 @@ def execute_tool(tool_name, params):
             if results:
                 return "\n\n".join(results)
             else:
-                return f"No results found for: {query}. Try using more specific terms like the fund's ISIN or ticker if available."
+                return f"No public data found for: {query}. The fund may be private or not have public performance data available."
                 
         except Exception as e:
             return f"Search error: {str(e)}"
@@ -187,10 +182,13 @@ def parse_tool_calls(response_text):
     """Parse tool calls from response text, handling multiple JSON objects."""
     tool_calls = []
     
+    # Clean up the response - remove any markdown or extra text
+    clean_text = response_text.strip()
+    
     # Try to find all JSON objects in the response
     # Look for patterns like {"tool": "xxx", "parameters": {...}}
     json_pattern = r'\{[^{}]*"tool"[^{}]*"parameters"[^{}]*\}'
-    matches = re.findall(json_pattern, response_text)
+    matches = re.findall(json_pattern, clean_text)
     
     for match in matches:
         try:
@@ -203,11 +201,23 @@ def parse_tool_calls(response_text):
     # If no matches found, try the whole response as JSON
     if not tool_calls:
         try:
-            tool_call = json.loads(response_text.strip())
+            tool_call = json.loads(clean_text)
             if "tool" in tool_call and "parameters" in tool_call:
                 tool_calls.append(tool_call)
         except:
             pass
+    
+    # If still no tool calls, try to extract from text
+    if not tool_calls:
+        # Look for tool calls in text like: tool: search_web, parameters: {"query": "..."}
+        tool_pattern = r'tool["\']?\s*[:=]\s*["\']?(\w+)["\']?.*?parameters["\']?\s*[:=]\s*(\{[^{}]+\})'
+        matches = re.findall(tool_pattern, clean_text, re.DOTALL)
+        for tool_name, params_str in matches:
+            try:
+                params = json.loads(params_str)
+                tool_calls.append({"tool": tool_name, "parameters": params})
+            except:
+                continue
     
     return tool_calls
 
@@ -317,6 +327,7 @@ def process_request(provider, model, user_message, system_prompt, api_key, max_i
     
     messages = [{"role": "user", "content": user_message}]
     all_tool_results = []
+    final_answer = None
     
     for iteration in range(max_iterations):
         st.info(f"🔄 Agent thinking... (iteration {iteration + 1}/{max_iterations})")
@@ -341,7 +352,7 @@ def process_request(provider, model, user_message, system_prompt, api_key, max_i
                 
                 st.info(f"🔧 Executing tool: {tool_name}")
                 tool_result = execute_tool(tool_name, params)
-                st.info(f"📊 Tool result: {tool_result[:200]}...")
+                st.info(f"📊 Tool result length: {len(tool_result)} characters")
                 
                 all_tool_results.append({
                     "tool": tool_name,
@@ -356,21 +367,27 @@ def process_request(provider, model, user_message, system_prompt, api_key, max_i
             # Continue to next iteration to get final response
             continue
         else:
-            # Not a tool call, return the response
-            return response
+            # Not a tool call, this is the final answer
+            final_answer = response
+            break
     
-    # If we've exhausted iterations, compile all results
-    if all_tool_results:
+    # If we have tool results but no final answer, compile them
+    if all_tool_results and not final_answer:
         final_summary = "## Search Results\n\n"
         for i, result in enumerate(all_tool_results, 1):
             final_summary += f"### Search {i}: {result['tool']}\n"
             final_summary += f"**Query:** {result['params'].get('query', 'N/A')}\n\n"
             final_summary += f"{result['result']}\n\n"
             final_summary += "---\n\n"
-        final_summary += "\n\n*Note: Multiple searches were performed to find the requested information.*"
+        
+        final_summary += "\n*If you need more specific data, please provide additional details or try a different fund name.*"
         return final_summary
     
-    return "I reached the maximum number of iterations. Please try again or rephrase your request."
+    # If we have a final answer, return it
+    if final_answer:
+        return final_answer
+    
+    return "I reached the maximum number of iterations without finding the data. Please try again or rephrase your request."
 
 
 # ============================================================
@@ -470,7 +487,7 @@ def call_free_llm(provider, model, messages, system_prompt=None):
         return f"[Provider {provider} not supported]"
 
 
-def run_praval_team(topic, provider="openrouter", model="openrouter/free"):
+def run_praval_team(topic, provider="openrouter", model="nvidia/nemotron-3-ultra-550b-a55b:free"):
     """Run Praval multi-agent team."""
     results = {
         "researcher": None,
