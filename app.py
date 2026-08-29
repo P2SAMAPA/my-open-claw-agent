@@ -242,7 +242,7 @@ def call_llm_with_tools(provider, model, messages, system_prompt):
         return f"API call error: {str(e)}"
 
 
-def process_request(provider, model, user_message, system_prompt, max_iterations=3):
+def process_request(provider, model, user_message, system_prompt, max_iterations=5):
     """Process a user request with tool execution loop."""
     
     messages = [{"role": "user", "content": user_message}]
