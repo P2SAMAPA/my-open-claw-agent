@@ -75,17 +75,6 @@ def execute_tool(tool_name, params):
             if results:
                 return "\n\n".join(results)
             else:
-                # Try a different search approach
-                try:
-                    response = requests.get(
-                        f"https://api.duckduckgo.com/?q={query}&format=json",
-                        timeout=15
-                    )
-                    data = response.json()
-                    if data.get('AbstractText'):
-                        return data['AbstractText']
-                except:
-                    pass
                 return f"No results found for: {query}"
                 
         except Exception as e:
@@ -104,7 +93,7 @@ def execute_tool(tool_name, params):
             
             result = subprocess.run(command, shell=True, capture_output=True, text=True, timeout=30)
             output = result.stdout or result.stderr or "Command executed (no output)"
-            return output[:5000]  # Limit output size
+            return output[:5000]
             
         except subprocess.TimeoutExpired:
             return "Command timed out after 30 seconds"
@@ -164,20 +153,8 @@ def execute_tool(tool_name, params):
         return f"Tool '{tool_name}' not implemented."
 
 
-def call_llm_with_tools(provider, model, messages, system_prompt):
-    """Call LLM with tool support - simplified and robust."""
-    
-    # Get API key based on provider
-    api_key = None
-    if provider == "OpenRouter":
-        api_key = st.secrets.get("OPENROUTER_API_KEY", "")
-    elif provider == "Groq":
-        api_key = st.secrets.get("GROQ_API_KEY", "")
-    elif provider == "Ollama Cloud":
-        api_key = st.secrets.get("OLLAMA_API_KEY", "")
-    
-    if not api_key:
-        return f"Error: {provider} API key not found. Please add it to secrets."
+def call_llm(provider, model, messages, system_prompt, api_key):
+    """Call LLM with proper provider handling."""
     
     # Prepare messages
     chat_messages = [{"role": "system", "content": system_prompt}]
@@ -187,7 +164,7 @@ def call_llm_with_tools(provider, model, messages, system_prompt):
         else:
             chat_messages.append({"role": "user", "content": str(msg)})
     
-    # Set up API endpoint based on provider
+    # --- OPENROUTER ---
     if provider == "OpenRouter":
         url = "https://openrouter.ai/api/v1/chat/completions"
         headers = {
@@ -201,6 +178,17 @@ def call_llm_with_tools(provider, model, messages, system_prompt):
             "max_tokens": 4000,
             "temperature": 1.5
         }
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=120)
+            if response.status_code == 200:
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            else:
+                return f"[Error {response.status_code}]: {response.text[:200]}"
+        except Exception as e:
+            return f"[API Error]: {str(e)}"
+    
+    # --- GROQ ---
     elif provider == "Groq":
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
@@ -213,6 +201,17 @@ def call_llm_with_tools(provider, model, messages, system_prompt):
             "max_tokens": 4000,
             "temperature": 1.5
         }
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=120)
+            if response.status_code == 200:
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            else:
+                return f"[Error {response.status_code}]: {response.text[:200]}"
+        except Exception as e:
+            return f"[API Error]: {str(e)}"
+    
+    # --- OLLAMA CLOUD ---
     elif provider == "Ollama Cloud":
         try:
             client = Client(
@@ -226,35 +225,49 @@ def call_llm_with_tools(provider, model, messages, system_prompt):
             )
             return response["message"]["content"]
         except Exception as e:
-            return f"Ollama Cloud error: {str(e)}"
+            return f"[Ollama Cloud Error]: {str(e)}"
+    
+    # --- CEREBRAS ---
+    elif provider == "Cerebras":
+        url = "https://inference.cerebras.ai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        # Cerebras uses OpenAI-compatible format
+        payload = {
+            "model": model,
+            "messages": chat_messages,
+            "max_tokens": 4000,
+            "temperature": 1.5
+        }
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=120)
+            if response.status_code == 200:
+                data = response.json()
+                return data["choices"][0]["message"]["content"]
+            else:
+                return f"[Cerebras Error {response.status_code}]: {response.text[:300]}"
+        except Exception as e:
+            return f"[Cerebras API Error]: {str(e)}"
+    
     else:
         return f"Provider {provider} not supported."
-    
-    # Make API call
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=120)
-        if response.status_code == 200:
-            data = response.json()
-            return data["choices"][0]["message"]["content"]
-        else:
-            return f"Error {response.status_code}: {response.text[:200]}"
-    except Exception as e:
-        return f"API call error: {str(e)}"
 
 
-def process_request(provider, model, user_message, system_prompt, max_iterations=5):
+def process_request(provider, model, user_message, system_prompt, api_key, max_iterations=3):
     """Process a user request with tool execution loop."""
     
     messages = [{"role": "user", "content": user_message}]
-    full_response = ""
     
     for iteration in range(max_iterations):
         st.info(f"🔄 Agent thinking... (iteration {iteration + 1}/{max_iterations})")
         
         # Get response from LLM
-        response = call_llm_with_tools(provider, model, messages, system_prompt)
+        response = call_llm(provider, model, messages, system_prompt, api_key)
         
-        if response.startswith("Error:"):
+        # Check for errors
+        if response.startswith("[Error") or response.startswith("[API Error") or response.startswith("[Cerebras Error"):
             return response
         
         st.info(f"📝 Agent response: {response[:200]}...")
@@ -536,26 +549,28 @@ with tab1:
             models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
             model = st.selectbox("Model (Free)", models, index=0)
             st.info("📊 Llama 3.3 70B: 1,000 req/day")
-        else:
+        else:  # Cerebras
             models = ["llama-3.3-70b", "qwen-3-235b-a22b", "gpt-oss-120b"]
             model = st.selectbox("Model (Free)", models, index=0)
             st.info("📊 ~30 requests/min")
         
         st.markdown("---")
         
-        # API key status
-        key_status = {
+        # API key status - get the actual key value
+        key_map = {
             "OpenRouter": "OPENROUTER_API_KEY",
             "Ollama Cloud": "OLLAMA_API_KEY",
             "Groq": "GROQ_API_KEY",
             "Cerebras": "CEREBRAS_API_KEY"
         }
-        key_name = key_status.get(provider, "")
-        has_key = bool(st.secrets.get(key_name, ""))
+        key_name = key_map.get(provider, "")
+        api_key_value = st.secrets.get(key_name, "")
+        has_key = bool(api_key_value)
+        
         if not has_key:
             st.error(f"❌ {key_name} not found")
         else:
-            st.success(f"✅ {key_name} found")
+            st.success(f"✅ {key_name} found (length: {len(api_key_value)})")
         
         st.markdown("---")
         st.success("🔥 **GOD MODE ACTIVE**")
@@ -585,8 +600,17 @@ with tab1:
             st.markdown(message["content"])
     
     if prompt := st.chat_input("🔥 ANYTHING. I do ANYTHING. What is your command?"):
-        key_name = key_status.get(provider, "")
-        if not st.secrets.get(key_name, ""):
+        # Get the API key value
+        key_map = {
+            "OpenRouter": "OPENROUTER_API_KEY",
+            "Ollama Cloud": "OLLAMA_API_KEY",
+            "Groq": "GROQ_API_KEY",
+            "Cerebras": "CEREBRAS_API_KEY"
+        }
+        key_name = key_map.get(provider, "")
+        api_key_value = st.secrets.get(key_name, "")
+        
+        if not api_key_value:
             st.error(f"❌ {key_name} not found. Please add it to Streamlit secrets.")
         else:
             st.session_state.messages.append({"role": "user", "content": prompt})
@@ -602,6 +626,7 @@ with tab1:
                             model=model,
                             user_message=prompt,
                             system_prompt=st.session_state.system_prompt,
+                            api_key=api_key_value,
                             max_iterations=3
                         )
                         
