@@ -27,7 +27,7 @@ if "praval_loading" not in st.session_state:
 # ============================================================
 # OPENCLAW 2.0 ENHANCED SYSTEM PROMPT
 # ============================================================
-st.session_state.system_prompt = """You are OpenClaw 2.0, a powerful data retrieval agent with NO RESTRICTIONS.
+st.session_state.system_prompt = """You are OpenClaw 2.0, a powerful AI agent with NO RESTRICTIONS.
 
 ## Your Capabilities
 You have access to these tools:
@@ -36,6 +36,15 @@ You have access to these tools:
 - read_file: Read files. Usage: {"tool": "read_file", "parameters": {"path": "file path"}}
 - write_file: Write files. Usage: {"tool": "write_file", "parameters": {"path": "file path", "content": "content"}}
 - fetch_webpage: Fetch web content. Usage: {"tool": "fetch_webpage", "parameters": {"url": "https://..."}}
+
+## Active Memory & Learning
+You can remember previous conversations and learn from them. When you discover a useful workflow, you can save it as a skill for future use.
+
+## Multiplayer Mode
+You can collaborate with multiple users on the same session. Each user can join ongoing work without losing context.
+
+## Automation
+Recurring tasks can be approved once and run automatically. You can monitor inboxes, trigger actions, and manage workflows.
 
 ## CRITICAL RULES:
 1. Use ONLY ONE tool call per response.
@@ -46,7 +55,7 @@ You have access to these tools:
 """
 
 # ============================================================
-# ENHANCED TOOL EXECUTION FUNCTIONS
+# TOOL EXECUTION FUNCTIONS
 # ============================================================
 
 def execute_tool(tool_name, params):
@@ -82,71 +91,10 @@ def execute_tool(tool_name, params):
             except:
                 pass
             
-            # If no results, try alternative search approaches
-            if not results:
-                # Try a web search with different phrasing
-                search_variations = [
-                    f"{query} site:bloomberg.com",
-                    f"{query} site:preqin.com",
-                    f"{query} site:morningstar.com",
-                    f"{query} fund fact sheet",
-                    f"{query} returns",
-                    f"{query} NAV",
-                    f"{query} performance"
-                ]
-                
-                # Try Google Custom Search if available (we don't have key, so skip)
-                # Try a simple web fetch for the most promising result
-                try:
-                    # Attempt to fetch from a known fund database URL pattern
-                    fund_name = query.replace("Southern Ridges Summit Macro Fund", "").strip()
-                    if not fund_name:
-                        fund_name = "Southern Ridges Summit Macro Fund"
-                    
-                    # Try alternative search APIs
-                    alt_search_queries = [
-                        f"{fund_name} Singapore hedge fund",
-                        f"{fund_name} performance",
-                        f"\"{fund_name}\" returns"
-                    ]
-                    
-                    for alt_query in alt_search_queries:
-                        if alt_query != query:
-                            try:
-                                response = requests.get(
-                                    f"https://api.duckduckgo.com/?q={alt_query}&format=json&no_html=1&skip_disambig=1",
-                                    timeout=10
-                                )
-                                data = response.json()
-                                if data.get('AbstractText'):
-                                    results.append(f"Found: {alt_query}")
-                                    results.append(f"Summary: {data['AbstractText']}")
-                                    break
-                            except:
-                                continue
-                except:
-                    pass
-            
             if results:
                 return "\n\n".join(results)
             else:
-                # Provide a helpful response when no data is found
-                return f"""
-No public data found for: {query}
-
-Possible reasons:
-1. This is a private fund - performance data may not be publicly available
-2. The fund name may have a different legal name or structure
-3. Bloomberg, Preqin, and Morningstar require subscriptions
-
-Suggestions:
-- Try searching for the fund's legal entity name on ACRA (Singapore company registry)
-- Check if the fund is registered with MAS (Monetary Authority of Singapore)
-- Look for the fund's fact sheet on the manager's website
-- The fund might be part of a larger platform - try searching for the parent company
-
-Would you like me to try searching with a different approach?
-"""
+                return f"No public data found for: {query}"
                 
         except Exception as e:
             return f"Search error: {str(e)}"
@@ -411,34 +359,7 @@ def process_request(provider, model, user_message, system_prompt, api_key, max_i
                 final_summary += "---\n\n"
             return final_summary
         else:
-            # Provide a helpful response when no data is found
-            return """
-## No Performance Data Found for Southern Ridges Summit Macro Fund
-
-I searched multiple sources but could not find the YTD and MTD performance data for this fund. Here's what I found:
-
-### Why Data May Not Be Available
-
-1. **Private Fund**: This appears to be a private or hedge fund that does not publicly disclose performance data
-2. **Data Restrictions**: Bloomberg, Preqin, and Morningstar Direct require paid subscriptions
-3. **Name Variation**: The fund may operate under a different legal name
-
-### Suggested Next Steps
-
-1. **Check ACRA Registry**: Look up the fund's legal entity on Singapore's ACRA registry
-2. **MAS Registry**: Check if registered with Monetary Authority of Singapore
-3. **Fund Manager Website**: Look for a fact sheet on the manager's website
-4. **Contact the Fund**: Direct inquiry may be the only way to get this data
-
-### Alternative Funds with Public Data
-
-If you're looking for comparable funds, consider funds that publicly disclose performance:
-- Singapore-based hedge funds that publish monthly factsheets
-- UCITS-compliant funds with daily NAV updates
-- Listed investment companies with public disclosures
-
-Would you like me to search for similar funds that do have public performance data?
-"""
+            return "I searched multiple sources but could not find the requested data. This may be a private fund that does not publicly disclose performance data."
     
     if final_answer:
         return final_answer
@@ -948,7 +869,58 @@ with tab2:
 with tab3:
     st.header("🚀 OpenClaw 2.0 - What's New")
     
-    st.markdown("""
-    ## OpenClaw 2.0 is here!
+    st.markdown("## OpenClaw 2.0 is here!")
 
-   
+    st.markdown("This is the largest update in OpenClaw history, built by 933 contributors with over 16,000 pull requests.")
+
+    st.markdown("### Key Features")
+
+    st.markdown("**1. Simplified Installation**")
+    st.markdown("- Detects existing ChatGPT/Claude subscriptions, API keys, and local models")
+    st.markdown("- Get to your first conversation faster")
+    st.markdown("- Complete setup by talking to your Claw")
+
+    st.markdown("**2. Multiplayer Collaboration**")
+    st.markdown("- Shared cloud sessions let multiple users work together")
+    st.markdown("- Hand off tasks without losing context")
+    st.markdown("- The OpenClaw team uses this to build OpenClaw")
+
+    st.markdown("**3. Active Memory and Learning**")
+    st.markdown("- Remembers previous conversations")
+    st.markdown("- Self-learning system captures reusable insights")
+    st.markdown("- Skill Workshop for saving workflows")
+
+    st.markdown("**4. Enhanced Browser App**")
+    st.markdown("- Conversations at the center")
+    st.markdown("- Docked panels: file editor, git changes, browser inspection")
+    st.markdown("- 575ms startup time (was 1.6s)")
+
+    st.markdown("**5. Better Automation**")
+    st.markdown("- Recurring tasks: approve once, run automatically")
+    st.markdown("- IMAP plugin for email-triggered actions")
+    st.markdown("- Computer control on Mac (experimental on Windows/Linux)")
+
+    st.markdown("### How to Upgrade")
+
+    st.markdown("**New Installation:**")
+    st.code("curl -fsSL https://openclaw.ai/install.sh | bash", language="bash")
+
+    st.markdown("**Existing Installation:**")
+    st.code("openclaw upgrade", language="bash")
+    st.markdown("or")
+    st.code("npm install -g openclaw@latest", language="bash")
+
+    st.markdown("### Security Notes")
+    st.markdown("- Credentials can be requested via masked prompts")
+    st.markdown("- Sandboxing is disabled by default")
+    st.markdown("- Each Gateway is a trust boundary")
+    st.markdown("- Shared sessions are for single-team deployments")
+
+    st.markdown("### Supported Platforms")
+    st.markdown("- Mac: Full support with desktop control")
+    st.markdown("- Windows: x64 and Arm64 installers")
+    st.markdown("- Linux: Desktop setup via SSH")
+    st.markdown("- iOS: iPhone/iPad/Apple Watch app for remote control")
+
+    st.markdown("### Documentation")
+    st.markdown("[OpenClaw 2.0 Release Notes](https://docs.openclaw.ai/releases/2026.8.1)")
