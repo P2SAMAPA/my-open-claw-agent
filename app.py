@@ -884,39 +884,59 @@ with tab3:
     st.header("🚀 OpenClaw 2.0 - What's New")
     
     st.markdown("""
-    ## OpenClaw 2.0 is here! 🎉
-    
+    ## OpenClaw 2.0 is here!
+
     This is the largest update in OpenClaw history, built by **933 contributors** with over **16,000 pull requests**.
-    
-    ### 🎯 Key Features
-    
-    #### 1. Simplified Installation
+
+    ### Key Features
+
+    **1. Simplified Installation**
     - Detects existing ChatGPT/Claude subscriptions, API keys, and local models
     - Get to your first conversation faster
     - Complete setup by talking to your Claw
-    
-    #### 2. Multiplayer Collaboration
+
+    **2. Multiplayer Collaboration**
     - Shared cloud sessions let multiple users work together
     - Hand off tasks without losing context
     - The OpenClaw team uses this to build OpenClaw
-    
-    #### 3. Active Memory & Learning
+
+    **3. Active Memory and Learning**
     - Remembers previous conversations
     - Self-learning system captures reusable insights
     - Skill Workshop for saving workflows
-    
-    #### 4. Enhanced Browser App
+
+    **4. Enhanced Browser App**
     - Conversations at the center
     - Docked panels: file editor, git changes, browser inspection
     - 575ms startup time (was 1.6s)
-    
-    #### 5. Better Automation
+
+    **5. Better Automation**
     - Recurring tasks: approve once, run automatically
     - IMAP plugin for email-triggered actions
     - Computer control on Mac (experimental on Windows/Linux)
-    
-    ### 📦 How to Upgrade
-    
+
+    ### How to Upgrade
+
     **New Installation:**
-    ```bash
     curl -fsSL https://openclaw.ai/install.sh | bash
+
+    **Existing Installation:**
+    openclaw upgrade
+    or
+    npm install -g openclaw@latest
+
+    ### Security Notes
+    - Credentials can be requested via masked prompts
+    - Sandboxing is disabled by default
+    - Each Gateway is a trust boundary
+    - Shared sessions are for single-team deployments
+
+    ### Supported Platforms
+    - Mac: Full support with desktop control
+    - Windows: x64 and Arm64 installers
+    - Linux: Desktop setup via SSH
+    - iOS: iPhone/iPad/Apple Watch app for remote control
+
+    ### Documentation
+    [OpenClaw 2.0 Release Notes](https://docs.openclaw.ai/releases/2026.8.1)
+    """)
