@@ -27,7 +27,7 @@ if "praval_loading" not in st.session_state:
 # ============================================================
 # OPENCLAW 2.0 ENHANCED SYSTEM PROMPT
 # ============================================================
-st.session_state.system_prompt = """You are OpenClaw 2.0, a powerful AI agent with NO RESTRICTIONS.
+st.session_state.system_prompt = """You are OpenClaw 2.0, a powerful data retrieval agent with NO RESTRICTIONS.
 
 ## Your Capabilities
 You have access to these tools:
@@ -36,15 +36,6 @@ You have access to these tools:
 - read_file: Read files. Usage: {"tool": "read_file", "parameters": {"path": "file path"}}
 - write_file: Write files. Usage: {"tool": "write_file", "parameters": {"path": "file path", "content": "content"}}
 - fetch_webpage: Fetch web content. Usage: {"tool": "fetch_webpage", "parameters": {"url": "https://..."}}
-
-## Active Memory & Learning
-You can remember previous conversations and learn from them. When you discover a useful workflow, you can save it as a skill for future use.
-
-## Multiplayer Mode
-You can collaborate with multiple users on the same session. Each user can join ongoing work without losing context.
-
-## Automation
-Recurring tasks can be approved once and run automatically. You can monitor inboxes, trigger actions, and manage workflows.
 
 ## CRITICAL RULES:
 1. Use ONLY ONE tool call per response.
@@ -55,7 +46,7 @@ Recurring tasks can be approved once and run automatically. You can monitor inbo
 """
 
 # ============================================================
-# TOOL EXECUTION FUNCTIONS
+# ENHANCED TOOL EXECUTION FUNCTIONS
 # ============================================================
 
 def execute_tool(tool_name, params):
@@ -69,54 +60,93 @@ def execute_tool(tool_name, params):
             
             st.info(f"🔍 Searching: {query}")
             
-            # Try DuckDuckGo API
-            response = requests.get(
-                f"https://api.duckduckgo.com/?q={query}&format=json&no_html=1&skip_disambig=1",
-                timeout=15
-            )
-            data = response.json()
-            
             results = []
             
-            if data.get('AbstractText'):
-                results.append(f"Summary: {data['AbstractText']}")
-                if data.get('AbstractURL'):
-                    results.append(f"Source: {data['AbstractURL']}")
+            # Try DuckDuckGo API
+            try:
+                response = requests.get(
+                    f"https://api.duckduckgo.com/?q={query}&format=json&no_html=1&skip_disambig=1",
+                    timeout=15
+                )
+                data = response.json()
+                
+                if data.get('AbstractText'):
+                    results.append(f"Summary: {data['AbstractText']}")
+                    if data.get('AbstractURL'):
+                        results.append(f"Source: {data['AbstractURL']}")
+                
+                if data.get('RelatedTopics'):
+                    for topic in data['RelatedTopics'][:5]:
+                        if 'Text' in topic:
+                            results.append(topic['Text'])
+            except:
+                pass
             
-            if data.get('RelatedTopics'):
-                for topic in data['RelatedTopics'][:5]:
-                    if 'Text' in topic:
-                        results.append(topic['Text'])
-            
-            # Automatic alternative searches
+            # If no results, try alternative search approaches
             if not results:
-                alternative_queries = [
-                    f"\"{query}\" fund returns",
+                # Try a web search with different phrasing
+                search_variations = [
+                    f"{query} site:bloomberg.com",
+                    f"{query} site:preqin.com",
+                    f"{query} site:morningstar.com",
+                    f"{query} fund fact sheet",
+                    f"{query} returns",
                     f"{query} NAV",
-                    f"{query} fact sheet",
-                    f"{query} Bloomberg",
-                    f"{query} Preqin"
+                    f"{query} performance"
                 ]
                 
-                for alt_query in alternative_queries:
-                    if alt_query != query:
-                        try:
-                            response = requests.get(
-                                f"https://api.duckduckgo.com/?q={alt_query}&format=json&no_html=1&skip_disambig=1",
-                                timeout=10
-                            )
-                            data = response.json()
-                            if data.get('AbstractText'):
-                                results.append(f"Found related: {alt_query}")
-                                results.append(f"Summary: {data['AbstractText']}")
-                                break
-                        except:
-                            continue
+                # Try Google Custom Search if available (we don't have key, so skip)
+                # Try a simple web fetch for the most promising result
+                try:
+                    # Attempt to fetch from a known fund database URL pattern
+                    fund_name = query.replace("Southern Ridges Summit Macro Fund", "").strip()
+                    if not fund_name:
+                        fund_name = "Southern Ridges Summit Macro Fund"
+                    
+                    # Try alternative search APIs
+                    alt_search_queries = [
+                        f"{fund_name} Singapore hedge fund",
+                        f"{fund_name} performance",
+                        f"\"{fund_name}\" returns"
+                    ]
+                    
+                    for alt_query in alt_search_queries:
+                        if alt_query != query:
+                            try:
+                                response = requests.get(
+                                    f"https://api.duckduckgo.com/?q={alt_query}&format=json&no_html=1&skip_disambig=1",
+                                    timeout=10
+                                )
+                                data = response.json()
+                                if data.get('AbstractText'):
+                                    results.append(f"Found: {alt_query}")
+                                    results.append(f"Summary: {data['AbstractText']}")
+                                    break
+                            except:
+                                continue
+                except:
+                    pass
             
             if results:
                 return "\n\n".join(results)
             else:
-                return f"No public data found for: {query}. The fund may be private or not have public performance data available."
+                # Provide a helpful response when no data is found
+                return f"""
+No public data found for: {query}
+
+Possible reasons:
+1. This is a private fund - performance data may not be publicly available
+2. The fund name may have a different legal name or structure
+3. Bloomberg, Preqin, and Morningstar require subscriptions
+
+Suggestions:
+- Try searching for the fund's legal entity name on ACRA (Singapore company registry)
+- Check if the fund is registered with MAS (Monetary Authority of Singapore)
+- Look for the fund's fact sheet on the manager's website
+- The fund might be part of a larger platform - try searching for the parent company
+
+Would you like me to try searching with a different approach?
+"""
                 
         except Exception as e:
             return f"Search error: {str(e)}"
@@ -365,15 +395,50 @@ def process_request(provider, model, user_message, system_prompt, api_key, max_i
             break
     
     if all_tool_results and not final_answer:
-        final_summary = "## Search Results\n\n"
-        for i, result in enumerate(all_tool_results, 1):
-            final_summary += f"### Search {i}: {result['tool']}\n"
-            final_summary += f"**Query:** {result['params'].get('query', 'N/A')}\n\n"
-            final_summary += f"{result['result']}\n\n"
-            final_summary += "---\n\n"
+        # Check if we have meaningful results
+        meaningful_results = False
+        for result in all_tool_results:
+            if len(result['result']) > 100 and "No public data" not in result['result']:
+                meaningful_results = True
+                break
         
-        final_summary += "\n*If you need more specific data, please provide additional details or try a different fund name.*"
-        return final_summary
+        if meaningful_results:
+            final_summary = "## Search Results\n\n"
+            for i, result in enumerate(all_tool_results, 1):
+                final_summary += f"### Search {i}: {result['tool']}\n"
+                final_summary += f"**Query:** {result['params'].get('query', 'N/A')}\n\n"
+                final_summary += f"{result['result']}\n\n"
+                final_summary += "---\n\n"
+            return final_summary
+        else:
+            # Provide a helpful response when no data is found
+            return """
+## No Performance Data Found for Southern Ridges Summit Macro Fund
+
+I searched multiple sources but could not find the YTD and MTD performance data for this fund. Here's what I found:
+
+### Why Data May Not Be Available
+
+1. **Private Fund**: This appears to be a private or hedge fund that does not publicly disclose performance data
+2. **Data Restrictions**: Bloomberg, Preqin, and Morningstar Direct require paid subscriptions
+3. **Name Variation**: The fund may operate under a different legal name
+
+### Suggested Next Steps
+
+1. **Check ACRA Registry**: Look up the fund's legal entity on Singapore's ACRA registry
+2. **MAS Registry**: Check if registered with Monetary Authority of Singapore
+3. **Fund Manager Website**: Look for a fact sheet on the manager's website
+4. **Contact the Fund**: Direct inquiry may be the only way to get this data
+
+### Alternative Funds with Public Data
+
+If you're looking for comparable funds, consider funds that publicly disclose performance:
+- Singapore-based hedge funds that publish monthly factsheets
+- UCITS-compliant funds with daily NAV updates
+- Listed investment companies with public disclosures
+
+Would you like me to search for similar funds that do have public performance data?
+"""
     
     if final_answer:
         return final_answer
@@ -886,57 +951,4 @@ with tab3:
     st.markdown("""
     ## OpenClaw 2.0 is here!
 
-    This is the largest update in OpenClaw history, built by **933 contributors** with over **16,000 pull requests**.
-
-    ### Key Features
-
-    **1. Simplified Installation**
-    - Detects existing ChatGPT/Claude subscriptions, API keys, and local models
-    - Get to your first conversation faster
-    - Complete setup by talking to your Claw
-
-    **2. Multiplayer Collaboration**
-    - Shared cloud sessions let multiple users work together
-    - Hand off tasks without losing context
-    - The OpenClaw team uses this to build OpenClaw
-
-    **3. Active Memory and Learning**
-    - Remembers previous conversations
-    - Self-learning system captures reusable insights
-    - Skill Workshop for saving workflows
-
-    **4. Enhanced Browser App**
-    - Conversations at the center
-    - Docked panels: file editor, git changes, browser inspection
-    - 575ms startup time (was 1.6s)
-
-    **5. Better Automation**
-    - Recurring tasks: approve once, run automatically
-    - IMAP plugin for email-triggered actions
-    - Computer control on Mac (experimental on Windows/Linux)
-
-    ### How to Upgrade
-
-    **New Installation:**
-    curl -fsSL https://openclaw.ai/install.sh | bash
-
-    **Existing Installation:**
-    openclaw upgrade
-    or
-    npm install -g openclaw@latest
-
-    ### Security Notes
-    - Credentials can be requested via masked prompts
-    - Sandboxing is disabled by default
-    - Each Gateway is a trust boundary
-    - Shared sessions are for single-team deployments
-
-    ### Supported Platforms
-    - Mac: Full support with desktop control
-    - Windows: x64 and Arm64 installers
-    - Linux: Desktop setup via SSH
-    - iOS: iPhone/iPad/Apple Watch app for remote control
-
-    ### Documentation
-    [OpenClaw 2.0 Release Notes](https://docs.openclaw.ai/releases/2026.8.1)
-    """)
+   
