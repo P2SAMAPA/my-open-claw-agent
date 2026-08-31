@@ -594,23 +594,6 @@ FREE_OLLAMA_MODELS = [
 
 
 # ============================================================
-# OPENCLAW 2.0 FEATURES INFO
-# ============================================================
-
-def show_openclaw2_features():
-    """Display OpenClaw 2.0 features in the sidebar."""
-    st.markdown("""
-    ### 🚀 OpenClaw 2.0
-
-    **Key Features:**
-    - **Multiplayer Sessions** - Collaborate with others on the same session
-    - **Active Memory** - Remembers previous conversations
-    - **Skill Workshop** - Save and reuse workflows
-    - **Automation** - One-time approval for recurring tasks
-    - **Computer Control** - Control Mac/Windows/Linux desktops
-    """)
-
-# ============================================================
 # STREAMLIT UI
 # ============================================================
 
